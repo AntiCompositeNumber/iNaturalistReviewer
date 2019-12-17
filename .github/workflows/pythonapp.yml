@@ -37,21 +37,3 @@ jobs:
       continue-on-error: true
       run: |
         coveralls
-  deploy:
-
-    runs-on: ubuntu-latest
-    needs: build 
-    if: contains(github.ref, 'master')
-    steps:
-    - name: create deployment
-      uses: NiklasMerz/github-deployment-action@v1.0.0
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        args: -o AntiCompositeNumber -r anticompositetools -c master -e production
-    - name: set deployment status
-      uses: NiklasMerz/github-deployment-action@v1.0.0
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        args: -o AntiCompositeNumber -r anticompositetools -s pending -f
