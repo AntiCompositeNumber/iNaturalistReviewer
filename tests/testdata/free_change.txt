@@ -1,0 +1,9 @@
+Description: {{en|1=Description}}
+Date: 1970-01-01
+Source: https://www.inaturalist.org/observations/15059501
+Author: Author
+
+{{cc-by-4.0}}
+{{iNaturalistReview}}
+
+[[Category:Catgory]]

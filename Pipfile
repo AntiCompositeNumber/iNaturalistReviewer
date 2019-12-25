@@ -13,6 +13,8 @@ pipenv-to-requirements = "*"
 requests = "*"
 pywikibot = {git = "https://phabricator.wikimedia.org/diffusion/PWBC/pywikibot.git"}
 requests-oauthlib = "*"
+beautifulsoup4 = "*"
+mwparserfromhell = "*"
 
 [requires]
 python_version = "3.7"
