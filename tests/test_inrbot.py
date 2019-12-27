@@ -18,8 +18,10 @@
 # limitations under the License.
 
 import unittest.mock as mock
-from collections import namedtuple
+import pytest
+import inspect
 import json
+import requests
 from datetime import date
 import pywikibot
 import sys
@@ -31,7 +33,61 @@ sys.path.append(os.path.realpath(_work_dir_ + "/.."))
 import src.inrbot as inrbot  # noqa: F401
 
 test_data_dir = os.path.join(_work_dir_, "testdata")
-id_tuple = namedtuple("iNaturalistID", "id type")
+id_tuple = inrbot.iNaturalistID
+
+
+def test_create_session():
+    s1 = inrbot.create_session()
+    assert type(s1) is requests.sessions.Session
+    s2 = inrbot.create_session()
+    assert s1 is s2
+
+
+def test_files_to_check():
+    assert inspect.isgeneratorfunction(inrbot.files_to_check)
+
+
+def test_check_runpage_run():
+    page = mock.MagicMock()
+    page.return_value.text = "<!-- Set to False to stop bot. -->\nTrue"
+
+    with mock.patch("pywikibot.Page", page):
+        inrbot.check_runpage()
+
+
+def test_check_runpage_stop():
+    page = mock.MagicMock()
+    page.return_value.text = "<!-- Set to False to stop bot. -->\nFalse"
+
+    with pytest.raises(pywikibot.UserBlocked):
+        with mock.patch("pywikibot.Page", page):
+            inrbot.check_runpage()
+
+
+def test_check_runpage_stop_anything():
+    page = mock.MagicMock()
+    page.return_value.text = "Stop!"
+
+    with pytest.raises(pywikibot.UserBlocked):
+        with mock.patch("pywikibot.Page", page):
+            inrbot.check_runpage()
+
+
+def test_check_runpage_stop_blank():
+    page = mock.MagicMock()
+    page.return_value.text = ""
+
+    with pytest.raises(pywikibot.UserBlocked):
+        with mock.patch("pywikibot.Page", page):
+            inrbot.check_runpage()
+
+
+def test_check_runpage_override():
+    page = mock.MagicMock()
+    page.return_value.text = "<!-- Set to False to stop bot. -->\nFalse"
+
+    with mock.patch("pywikibot.Page", page):
+        inrbot.check_runpage(override=True)
 
 
 def test_find_ina_id():
@@ -74,6 +130,93 @@ def test_find_ina_id_multiple():
     ina_id = inrbot.find_ina_id(page)
     compare = id_tuple(id="15059501", type="observations")
     assert ina_id == compare
+
+
+@pytest.mark.ext_web
+def test_get_ina_data_observation():
+    ina_id = id_tuple(id="36885889", type="observations")
+    response = inrbot.get_ina_data(ina_id)
+    assert response
+    assert type(response) is dict
+
+
+def test_get_ina_data_wrong_endpoint():
+    ina_id = id_tuple(id="anticompositenumber", type="people")
+    response = inrbot.get_ina_data(ina_id)
+    assert response is None
+
+
+@pytest.mark.ext_web
+@pytest.mark.xfail(reason="Issue #6")
+def test_get_ina_data_photo():
+    ina_id = id_tuple(id="58596678", type="photos")
+    response = inrbot.get_ina_data(ina_id)
+    assert response
+    assert type(response) is dict
+
+
+def test_get_ina_data_bad_data():
+    ina_id = id_tuple(id="36885889", type="observations")
+    mock_session = mock.MagicMock()
+    mock_session.return_value.get.return_value.json.return_value = {"total_results": 1}
+    with mock.patch("src.inrbot.create_session", mock_session):
+        response = inrbot.get_ina_data(ina_id)
+
+    assert response is None
+
+
+def test_get_ina_data_wrong_number():
+    ina_id = id_tuple(id="36885889", type="observations")
+    mock_session = mock.MagicMock()
+    mock_session.return_value.get.return_value.json.return_value = {"total_results": 2}
+    with mock.patch("src.inrbot.create_session", mock_session):
+        response = inrbot.get_ina_data(ina_id)
+
+    assert response is None
+
+
+def test_get_ina_data_error():
+    ina_id = id_tuple(id="36885889", type="observations")
+    mock_session = mock.MagicMock()
+    mock_session.return_value.get.side_effect = requests.exceptions.HTTPError
+    with mock.patch("src.inrbot.create_session", mock_session):
+        response = inrbot.get_ina_data(ina_id)
+
+    assert response is None
+
+
+@pytest.mark.ext_web
+def test_find_photo_in_obs():
+    page = mock.MagicMock()
+    page.latest_file_info.sha1 = "a80ef8a886c3deeeded624856fb83d269dda1683"
+    obs_id = id_tuple(id="36885821", type="observations")
+    ina_data = inrbot.get_ina_data(obs_id)
+
+    photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
+    assert found is None
+    assert photo == id_tuple(id="58381754", type="photos")
+
+
+def test_find_photo_in_obs_notfound():
+    page = mock.MagicMock()
+    obs_id = mock.MagicMock()
+    ina_data = {"photos": []}
+
+    photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
+    assert photo is None
+    assert found == "notfound"
+
+
+@pytest.mark.ext_web
+def test_find_photo_in_obs_notmatching():
+    page = mock.MagicMock()
+    page.latest_file_info.sha1 = "foo"
+    obs_id = id_tuple(id="36885821", type="observations")
+    ina_data = inrbot.get_ina_data(obs_id)
+
+    photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
+    assert photo is None
+    assert found == "notmatching"
 
 
 def test_find_ina_license():
@@ -199,8 +342,7 @@ def test_update_review_section_error():
     save_page = mock.Mock()
     with mock.patch("src.inrbot.save_page", save_page):
         inrbot.update_review(
-            page,
-            status="error",
+            page, status="error",
         )
     compare = (
         "{{cc-by-sa-4.0}}{{iNaturalistReview |status=error "
@@ -420,3 +562,104 @@ def test_make_template_change():
         "|reviewlicense=Cc-by-sa-4.0 |uploadlicense=Cc-by-4.0}}"
     )
     assert str(template) == compare
+
+
+@pytest.mark.skip()
+def test_save_page_save():
+    page = mock.MagicMock()
+    new_text = "new_text"
+    status = "statusstatus"
+    review_license = "licensereview"
+
+    inrbot.save_page(page, new_text, status, review_license)
+    assert page.text == new_text
+    page.save.assert_called_once()
+    summary = page.save.call_args[1]["summary"]
+    assert status in summary
+    assert review_license in summary
+
+
+def test_save_page_sim():
+    page = mock.MagicMock()
+    new_text = "new_text"
+    status = "statusstatus"
+    review_license = "licensereview"
+
+    inrbot.save_page(page, new_text, status, review_license)
+    page.save.assert_not_called()
+
+
+def test_main_auto_total():
+    review_file = mock.MagicMock()
+    sleep = mock.MagicMock()
+    files_to_check = mock.MagicMock(return_value=range(0, 10))
+    total = 4
+
+    with mock.patch("src.inrbot.review_file", review_file):
+        with mock.patch("time.sleep", sleep):
+            with mock.patch("src.inrbot.files_to_check", files_to_check):
+                inrbot.main(total=total)
+
+    assert review_file.call_count == total
+    sleep_sum = sum(n[0][0] for n in sleep.call_args_list)
+    assert sleep_sum == 60 * total
+
+
+def test_main_auto_end():
+    review_file = mock.MagicMock()
+    sleep = mock.MagicMock()
+    files_to_check = mock.MagicMock(return_value=range(0, 3))
+    total = 7
+
+    with mock.patch("src.inrbot.review_file", review_file):
+        with mock.patch("time.sleep", sleep):
+            with mock.patch("src.inrbot.files_to_check", files_to_check):
+                inrbot.main(total=total)
+
+    assert review_file.call_count == total
+    sleep_sum = sum(n[0][0] for n in sleep.call_args_list)
+    assert sleep_sum > 60 * total
+
+
+def test_main_auto_blocked():
+    # Runpage fails and actually being blocked should stop the bot.
+    review_file = mock.MagicMock()
+    review_file.side_effect = pywikibot.UserBlocked("Runpage is false!")
+    sleep = mock.MagicMock()
+    files_to_check = mock.MagicMock(return_value=range(0, 10))
+
+    with mock.patch("src.inrbot.review_file", review_file):
+        with mock.patch("time.sleep", sleep):
+            with mock.patch("src.inrbot.files_to_check", files_to_check):
+                with pytest.raises(pywikibot.UserBlocked):
+                    inrbot.main(total=1)
+
+    sleep.assert_not_called()
+
+
+def test_main_auto_exception():
+    # Other exceptions can be handled
+    review_file = mock.MagicMock()
+    review_file.side_effect = ValueError
+    sleep = mock.MagicMock()
+    files_to_check = mock.MagicMock(return_value=range(0, 10))
+    total = 2
+
+    with mock.patch("src.inrbot.review_file", review_file):
+        with mock.patch("time.sleep", sleep):
+            with mock.patch("src.inrbot.files_to_check", files_to_check):
+                inrbot.main(total=total)
+
+    assert review_file.call_count == total
+    sleep_sum = sum(n[0][0] for n in sleep.call_args_list)
+    assert sleep_sum == 60 * total
+
+
+def test_main_single():
+    review_file = mock.MagicMock()
+    page = mock.MagicMock()
+
+    with mock.patch("src.inrbot.review_file", review_file):
+        inrbot.main(page=page)
+
+    review_file.assert_called_once_with(page)

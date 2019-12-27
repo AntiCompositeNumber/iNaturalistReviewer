@@ -30,7 +30,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        coverage run -m pytest
+        coverage run -m pytest -v -o addopts=
     - name: Coveralls
       env:        
         COVERALLS_REPO_TOKEN: ${{ secrets.coveralls_repo_key }}

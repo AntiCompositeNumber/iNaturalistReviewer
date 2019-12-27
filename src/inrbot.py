@@ -134,7 +134,7 @@ def get_ina_data(ina_id):
     else:
         if response_json.get("total_results") != 1:
             return None
-        return response_json["results"][0]
+        return response_json.get("results", [None])[0]
 
 
 def find_photo_in_obs(page, obs_id, ina_data):
@@ -325,6 +325,7 @@ def save_page(page, new_text, status, review_license):
     page.text = new_text
     simulate = True  # FIXME DEV ONLY
     if not simulate:
+        check_runpage()
         logging.info(f"Saving {page.title()}")
         page.save(summary=summary)
     else:
@@ -384,18 +385,38 @@ def review_file(inpage):
     return True
 
 
-def main(page=None, total=1):
-    total = total - 1
+def main(page=None, total=None):
+    """Main loop for program"""
+    # Enumerate starts at 0, so to get N items, count to N-1.
     if page:
+        # When given a page, check only that page
         review_file(page)
     else:
+        # Otherwise, run automatically
+        # If total is 0, run continuously.
+        # If total is non-zero, check that many files
         i = 0
-        while (not total) or (i < total):
-            for i, page in enumerate(files_to_check()):
-                review_file(page)
+        while (total is None) or (i < total):
+            for page in files_to_check():
+                if i >= total:
+                    break
+                else:
+                    i += 1
+
+                running = True
+                try:
+                    review_file(page)
+                except pywikibot.UserBlocked:
+                    raise
+                except Exception:
+                    pass
                 time.sleep(60)
             else:
-                logging.warning("Out of pages to check!")
+                # If the for loop drops out, there are no more pages right now
+                if running:
+                    running = False
+                    logging.warning("Out of pages to check!")
+                # May need to adjust this number depending on load
                 time.sleep(300)
 
 
