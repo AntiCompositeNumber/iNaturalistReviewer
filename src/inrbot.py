@@ -395,28 +395,31 @@ if __name__ == "__main__":
         dest="ignore_runpage",
         help="skip the runpage check for testing",
     )
-    parser.add_argument(
+    sim = parser.add_mutually_exclusive_group()
+    sim.add_argument(
         "--simulate",
         action="store_true",
-        default=None,
         help="print the output wikitext instead of saving to Commons",
+    )
+    sim.add_argument(
+        "--no-simulate",
+        action="store_true",
+        dest="no_simulate",
+        help="forces saving when disabled by --ignore-runpage",
     )
     parser.add_argument(
         "--version", action="version", version="%(prog)s " + __version__
     )
     args = parser.parse_args()
 
-    simulate = bool(args.simulate)
-
-    if args.ignore_runpage:
-        ignore_runpage = True
-        # Don't write while ignoring runpage unless told to do so explicitly
-        if simulate is False:
+    run_override = args.ignore_runpage
+    if run_override:
+        if args.no_simulate:
             simulate = False
         else:
             simulate = True
     else:
-        ignore_runpage = False
+        simulate = args.simulate
 
     if args.auto:
         main(total=args.total)
