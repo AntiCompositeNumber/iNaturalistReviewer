@@ -69,6 +69,11 @@ def create_session():
 
 
 def check_runpage(override=False):
+    """Checks the Commons runpage to determine if the bot can run.
+
+    If the runpage does not end with True, an exception is raised.
+    This check can be ignored by setting override to True
+    """
     if not override:
         page = pywikibot.Page(site, "User:INaturalistReviewBot/Run")
         runpage = page.text.endswith("True")
@@ -276,19 +281,6 @@ def update_review(
     return True
 
 
-def save_page(page, new_text, status, review_license):
-    summary = f"License review: {status} {review_license}"
-    page.text = new_text
-    simulate = True  # FIXME DEV ONLY
-    if not simulate:
-        logging.info(f"Saving {page.title()}")
-        page.save(summary=summary)
-    else:
-        logging.info(f"Saving disabled")
-        logging.info(summary)
-        logging.info(page.text)
-
-
 def make_template(
     photo_id=None, status="", author="", review_license="", upload_license="",
 ):
@@ -323,8 +315,38 @@ def make_template(
     return code
 
 
+def save_page(page, new_text, status, review_license):
+    """Replaces the wikitext of the specified page with new_text
+
+    If the global simulate variable is true, the wikitext will be printed
+    instead of saved to Commons.
+    """
+    summary = f"License review: {status} {review_license} (inrbot {__version__}"
+    page.text = new_text
+    simulate = True  # FIXME DEV ONLY
+    if not simulate:
+        logging.info(f"Saving {page.title()}")
+        page.save(summary=summary)
+    else:
+        logging.info(f"Saving disabled")
+        logging.info(summary)
+        logging.info(page.text)
+
+
 def review_file(inpage):
-    page = pywikibot.FilePage(inpage)
+    """Performs a license review on the input page
+
+    inpage must be in the file namespace.
+
+    Returns None if the file was skipped
+    Returns False if there was an error during review
+    Returns True if the file was successfully reviewed (pass or fail)
+    """
+    try:
+        page = pywikibot.FilePage(inpage)
+    except ValueError:
+        return None
+
     check_runpage(run_override)
     logging.info(f"Checking {page.title()}")
     wikitext_id = find_ina_id(page)
@@ -359,6 +381,7 @@ def review_file(inpage):
         review_license=ina_license,
         upload_license=com_license,
     )
+    return True
 
 
 def main(page=None, total=1):
