@@ -30,6 +30,8 @@ import pywikibot.pagegenerators as pagegenerators
 import mwparserfromhell as mwph
 import requests
 
+__version__ = "0.1.0"
+
 logging.basicConfig(level=logging.INFO)
 # Quiet pywikibot's overly-verbose logging
 pywlog = logging.getLogger("pywiki")
@@ -37,7 +39,6 @@ pywlog.setLevel("INFO")
 
 site = pywikibot.Site("commons", "commons")
 iNaturalistID = namedtuple("iNaturalistID", "id type")
-version = "0.1.0"
 username = "iNaturalistReviewBot"
 _session_ = None
 
@@ -51,7 +52,8 @@ def create_session():
     _session_ = requests.Session()
     _session_.headers.update(
         {
-            "user-agent": f"Bot iNaturalistReviewer/{version} on Wikimedia Toolforge "
+            "user-agent": f"Bot iNaturalistReviewer/{__version__} "
+            "on Wikimedia Toolforge "
             f"(Contact: https://commons.wikimedia.org/wiki/User:{username}; "
             "https://www.inaturalist.org/people/anticompositenumber "
             "tools.inaturalistreviewer@tools.wmflabs.org) "
@@ -399,7 +401,9 @@ if __name__ == "__main__":
         default=None,
         help="print the output wikitext instead of saving to Commons",
     )
-    parser.add_argument("--version", action="version", version="%(prog)s " + version)
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s " + __version__
+    )
     args = parser.parse_args()
 
     simulate = bool(args.simulate)
