@@ -40,17 +40,22 @@ pywlog.setLevel("INFO")
 site = pywikibot.Site("commons", "commons")
 iNaturalistID = namedtuple("iNaturalistID", "id type")
 username = "iNaturalistReviewBot"
-_session_ = None
+_session = None
 
 
 def create_session():
-    global _session_
+    """Handles the creation of a Requests session with a descriptive UA
 
-    if _session_:
-        return _session_
+    If there is already a session, returns that session.
+    Otherwise, a new session is created and returned
+    """
+    global _session
 
-    _session_ = requests.Session()
-    _session_.headers.update(
+    if _session:
+        return _session
+
+    _session = requests.Session()
+    _session.headers.update(
         {
             "user-agent": f"Bot iNaturalistReviewer/{__version__} "
             "on Wikimedia Toolforge "
@@ -60,7 +65,7 @@ def create_session():
             f"Python requests/{requests.__version__}"
         }
     )
-    return _session_
+    return _session
 
 
 def check_runpage(override=False):
