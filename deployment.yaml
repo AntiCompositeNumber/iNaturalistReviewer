@@ -1,25 +1,17 @@
 ---
 # Run iNR on kubernetes
 # Copied from https://wikitech.wikimedia.org/wiki/Help:Toolforge/Kubernetes#Kubernetes_continuous_jobs
-apiVersion: v1
 kind: Deployment
+apiVersion: extensions/v1beta1
 metadata:
   name: inaturalistreviewer.bot
-  namespace: tool-inaturalistreviewer
-  labels:
-    name: inaturalistreviewer.bot
-    toolforge: tool
+  namespace: inaturalistreviewer
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      name: inaturalistreviewer.bot
-      toolforge: tool
   template:
     metadata:
       labels:
         name: inaturalistreviewer.bot
-        toolforge: tool
     spec:
       containers:
         - name: bot
@@ -30,3 +22,10 @@ spec:
             - name: HOME
               value: /data/project/inaturalistreviewer
           imagePullPolicy: Always
+          volumeMounts:
+            - name: home
+              mountPath: /data/project/inaturalistreviewer
+      volumes:
+        - name: home
+          hostPath:
+            path: /data/project/inaturalistreviewer
