@@ -1,7 +1,7 @@
 ---
 # Run iNR on kubernetes
 # Copied from https://wikitech.wikimedia.org/wiki/Help:Toolforge/Kubernetes#Kubernetes_continuous_jobs
-apiVersion: apps/v1
+apiVersion: v1
 kind: Deployment
 metadata:
   name: inaturalistreviewer.bot
