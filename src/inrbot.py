@@ -34,6 +34,7 @@ import mwparserfromhell as mwph
 import requests
 
 __version__ = "0.2.0"
+username = "iNaturalistReviewBot"
 
 logging.basicConfig(filename="inrbot.log", level=logging.INFO)
 # Quiet pywikibot's overly-verbose logging
@@ -42,8 +43,8 @@ pywlog.setLevel("INFO")
 
 site = pywikibot.Site("commons", "commons")
 iNaturalistID = namedtuple("iNaturalistID", "id type")
-username = "iNaturalistReviewBot"
 _session = None
+skip = set()
 
 
 def exception_to_issue(err, reraise=True):
@@ -131,6 +132,20 @@ def check_runpage(override=False):
             raise pywikibot.UserBlocked("Runpage is false, quitting...")
     else:
         logging.warning("Ignoring runpage setting!")
+
+
+def check_can_run(page):
+    """Determinies if the bot should run on this page and returns a bool."""
+
+    if (
+        (page.title() in skip)
+        or (not page.canBeEdited())
+        or (not page.botMayEdit())
+        or ("{{iNaturalistreview}}" not in page.text)
+    ):
+        return False
+    else:
+        return True
 
 
 def files_to_check():
@@ -398,10 +413,16 @@ def review_file(inpage):
         return None
 
     check_runpage(run_override)
+    if not check_can_run(page):
+        return None
+
     logging.info(f"Checking {page.title()}")
+
     wikitext_id = find_ina_id(page)
     logging.info(f"ID found in wikitext: {wikitext_id}")
-    if wikitext_id.type != "observations":
+    if wikitext_id is None:
+        return None
+    elif wikitext_id.type != "observations":
         logging.info("Not a supported endpoint.")
         update_review(page, status="error")
         return False

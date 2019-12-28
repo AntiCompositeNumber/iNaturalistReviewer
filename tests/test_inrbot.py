@@ -43,8 +43,40 @@ def test_create_session():
     assert s1 is s2
 
 
-def test_files_to_check():
-    assert inspect.isgeneratorfunction(inrbot.files_to_check)
+def test_check_can_run_skip():
+    page = pywikibot.Page(inrbot.site, "File:Male.svg")
+    assert type(inrbot.skip) is set
+    inrbot.skip.add("File:Male.svg")
+    inrbot.check_can_run(page)
+    inrbot.skip.remove("File:Male.svg")
+
+
+def test_check_can_run_protected():
+    page = pywikibot.Page(inrbot.site, "Main Page")
+    assert not inrbot.check_can_run(page)
+
+
+def test_check_can_run_exclusion():
+    page = pywikibot.Page(inrbot.site, "File:Male.svg")
+    assert not inrbot.check_can_run(page)
+
+
+def test_check_can_run_template():
+    page = mock.MagicMock()
+    page.text = "{{iNaturalistreview}}"
+    assert inrbot.check_can_run(page)
+
+
+def test_check_can_run_no_template():
+    page = mock.MagicMock()
+    page.text = "foo"
+    assert not inrbot.check_can_run(page)
+
+
+def test_check_can_run_paras():
+    page = mock.MagicMock()
+    page.text = "{{iNaturalistreview|status=error}}"
+    assert not inrbot.check_can_run(page)
 
 
 def test_check_runpage_run():
@@ -88,6 +120,10 @@ def test_check_runpage_override():
 
     with mock.patch("pywikibot.Page", page):
         inrbot.check_runpage(override=True)
+
+
+def test_files_to_check():
+    assert inspect.isgeneratorfunction(inrbot.files_to_check)
 
 
 def test_find_ina_id():
