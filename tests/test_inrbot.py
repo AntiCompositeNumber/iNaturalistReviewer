@@ -564,13 +564,13 @@ def test_make_template_change():
     assert str(template) == compare
 
 
-@pytest.mark.skip()
 def test_save_page_save():
     page = mock.MagicMock()
     new_text = "new_text"
     status = "statusstatus"
     review_license = "licensereview"
 
+    inrbot.simulate = False
     inrbot.save_page(page, new_text, status, review_license)
     assert page.text == new_text
     page.save.assert_called_once()
@@ -585,6 +585,7 @@ def test_save_page_sim():
     status = "statusstatus"
     review_license = "licensereview"
 
+    inrbot.simulate = True
     inrbot.save_page(page, new_text, status, review_license)
     page.save.assert_not_called()
 
