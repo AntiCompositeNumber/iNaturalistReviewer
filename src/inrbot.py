@@ -21,10 +21,13 @@ import logging
 import urllib.parse
 import hashlib
 import argparse
+import json
+import getpass
 import time
+import traceback
 from hmac import compare_digest
 from collections import namedtuple
-from datetime import date
+from datetime import date, datetime
 import pywikibot
 import pywikibot.pagegenerators as pagegenerators
 import mwparserfromhell as mwph
@@ -41,6 +44,51 @@ site = pywikibot.Site("commons", "commons")
 iNaturalistID = namedtuple("iNaturalistID", "id type")
 username = "iNaturalistReviewBot"
 _session = None
+
+
+def exception_to_issue(err, reraise=True):
+    """Takes an exception, creates a GitHub issue, then re-raises.
+
+    Tools running in k8s on Toolforge can't send mail easily,
+    which means that we have to make failure loud on our own.
+    """
+    if getpass.getuser() != "tools.inaturalistreviewer":
+        if reraise:
+            raise
+        return
+
+    try:
+        with open("github_config.json") as f:
+            config = json.load(f)
+    except FileNotFoundError:
+        pass
+    else:
+        tb = traceback.format_exception(None, err, err.__traceback__)
+        if reraise:
+            status = 'stopped'
+        else:
+            status = 'continued'
+        requests.post(
+            "https://api.github.com/repos/"
+            "AntiCompositeNumber/iNaturalistReviewer/issues",
+            json={
+                "title": f"Unhandled {type(err).__name__} on Toolforge "
+                f"at {date.today().isoformat()}",
+                "body": "".join(tb)
+                + (
+                    f"\nTime: {datetime.now().isoformat()}\n\n"
+                    f"Version: inrbot {__version__}\n\n"
+                    f"The bot has {status} after this exception."
+                ),
+                "assignees": ["AntiCompositeNumber"],
+                "labels": ["prod-error"],
+            },
+            auth=(config["username"], config["token"]),
+        )
+
+    if reraise:
+        raise
+    return
 
 
 def create_session():
@@ -325,7 +373,7 @@ def save_page(page, new_text, status, review_license):
     page.text = new_text
     simulate = True  # FIXME DEV ONLY
     if not simulate:
-        check_runpage()
+        check_runpage(run_override)
         logging.info(f"Saving {page.title()}")
         page.save(summary=summary)
     else:
@@ -396,6 +444,7 @@ def main(page=None, total=None):
         # If total is 0, run continuously.
         # If total is non-zero, check that many files
         i = 0
+        running = None
         while (total is None) or (i < total):
             for page in files_to_check():
                 if i >= total:
@@ -403,14 +452,22 @@ def main(page=None, total=None):
                 else:
                     i += 1
 
-                running = True
                 try:
                     review_file(page)
-                except pywikibot.UserBlocked:
-                    raise
-                except Exception:
-                    pass
+                except pywikibot.UserBlocked as err:
+                    # Blocks and runpage checks always stop
+                    exception_to_issue(err, reraise=True)
+                except Exception as err:
+                    if running:
+                        exception_to_issue(err, reraise=False)
+                        running = False
+                    else:
+                        # If this exception happened after running out
+                        # of pages or another exception, stop the bot.
+                        exception_to_issue(err, reraise=True)
+
                 time.sleep(60)
+                running = True
             else:
                 # If the for loop drops out, there are no more pages right now
                 if running:
