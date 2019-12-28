@@ -12,5 +12,7 @@ jobs:
     if: github.event.label.name == 'prod-error'
 
     steps:
+    - name: Debug
+      run: echo ${{github.event}}
     - name: Fail
       run: exit 1 
