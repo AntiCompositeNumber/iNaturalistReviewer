@@ -444,7 +444,7 @@ def main(page=None, total=None):
         # If total is 0, run continuously.
         # If total is non-zero, check that many files
         i = 0
-        running = None
+        running = True
         while (total is None) or (i < total):
             for page in files_to_check():
                 if i >= total:
