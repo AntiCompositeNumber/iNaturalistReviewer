@@ -33,9 +33,9 @@ import pywikibot.pagegenerators as pagegenerators
 import mwparserfromhell as mwph
 import requests
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(filename="inrbot.log", level=logging.INFO)
 # Quiet pywikibot's overly-verbose logging
 pywlog = logging.getLogger("pywiki")
 pywlog.setLevel("INFO")
@@ -55,19 +55,20 @@ def exception_to_issue(err, reraise=True):
     if getpass.getuser() != "tools.inaturalistreviewer":
         if reraise:
             raise
+        logging.exception(err)
         return
 
     try:
-        with open("github_config.json") as f:
+        with open("/data/project/inaturalistreviewer/github_config.json") as f:
             config = json.load(f)
     except FileNotFoundError:
         pass
     else:
         tb = traceback.format_exception(None, err, err.__traceback__)
         if reraise:
-            status = 'stopped'
+            status = "stopped"
         else:
-            status = 'continued'
+            status = "continued"
         requests.post(
             "https://api.github.com/repos/"
             "AntiCompositeNumber/iNaturalistReviewer/issues",
@@ -88,6 +89,7 @@ def exception_to_issue(err, reraise=True):
 
     if reraise:
         raise
+    logging.exception(err)
     return
 
 
@@ -371,7 +373,6 @@ def save_page(page, new_text, status, review_license):
     """
     summary = f"License review: {status} {review_license} (inrbot {__version__}"
     page.text = new_text
-    simulate = True  # FIXME DEV ONLY
     if not simulate:
         check_runpage(run_override)
         logging.info(f"Saving {page.title()}")
