@@ -9,6 +9,7 @@ pytest = "*"
 coveralls = "*"
 pipenv-to-requirements = "*"
 mypy = "*"
+black = "*"
 
 [packages]
 requests = "*"
@@ -18,3 +19,6 @@ mwparserfromhell = "*"
 
 [requires]
 python_version = "3.7"
+
+[pipenv]
+allow_prereleases = true
