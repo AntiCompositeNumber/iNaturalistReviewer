@@ -42,7 +42,6 @@ kubectl create -f /data/project/inaturalistreviewer/iNaturalistReviewer/deployme
 ```
 
 TODO: Stick these commands in a bash script
-TODO: k8s does not mail on failure like the grid does, so exception handling needs to be more robust
 
 ## Commons intergration
 The bot is controlled by a [runpage on Commons](https://commons.wikimedia.org/wiki/User:INaturalistReviewBot/Run). If the runpage does not end with True, the bot will stop cleanly. Blocking the bot will also stop it from running. Using the runpage is preferred as it is faster and easier for everyone involved. 
