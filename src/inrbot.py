@@ -26,11 +26,11 @@ import getpass
 import time
 import traceback
 from hmac import compare_digest
-from collections import namedtuple
 from datetime import date, datetime
-import pywikibot
-import pywikibot.pagegenerators as pagegenerators
-import mwparserfromhell as mwph
+from typing import Optional, Tuple, NamedTuple, Set, Union
+import pywikibot  # type: ignore
+import pywikibot.pagegenerators as pagegenerators  # type: ignore
+import mwparserfromhell as mwph  # type: ignore
 import requests
 
 __version__ = "0.2.0"
@@ -42,12 +42,12 @@ pywlog = logging.getLogger("pywiki")
 pywlog.setLevel("INFO")
 
 site = pywikibot.Site("commons", "commons")
-iNaturalistID = namedtuple("iNaturalistID", "id type")
+iNaturalistID = NamedTuple("iNaturalistID", [("id", str), ("type", str)])
 _session = None
-skip = set()
+skip: Set[str] = set()
 
 
-def exception_to_issue(err, reraise=True):
+def exception_to_issue(err: BaseException, reraise: bool = True) -> None:
     """Takes an exception, creates a GitHub issue, then re-raises.
 
     Tools running in k8s on Toolforge can't send mail easily,
@@ -94,7 +94,7 @@ def exception_to_issue(err, reraise=True):
     return
 
 
-def create_session():
+def create_session() -> requests.Session:
     """Handles the creation of a Requests session with a descriptive UA
 
     If there is already a session, returns that session.
@@ -119,7 +119,7 @@ def create_session():
     return _session
 
 
-def check_runpage(override=False):
+def check_runpage(override: bool = False) -> None:
     """Checks the Commons runpage to determine if the bot can run.
 
     If the runpage does not end with True, an exception is raised.
@@ -134,7 +134,7 @@ def check_runpage(override=False):
         logging.warning("Ignoring runpage setting!")
 
 
-def check_can_run(page):
+def check_can_run(page: pywikibot.BasePage) -> bool:
     """Determinies if the bot should run on this page and returns a bool."""
 
     if (
@@ -148,7 +148,7 @@ def check_can_run(page):
         return True
 
 
-def files_to_check():
+def files_to_check() -> pywikibot.BasePage:
     """Iterate list of files needing review from Commons"""
     category = pywikibot.Category(site, "Category:INaturalist review needed")
     for page in pagegenerators.CategorizedPageGenerator(
@@ -157,7 +157,7 @@ def files_to_check():
         yield page
 
 
-def find_ina_id(page):
+def find_ina_id(page: pywikibot.BasePage) -> Optional[iNaturalistID]:
     """Returns an iNaturalistID tuple from wikitext"""
     for url in page.extlinks():
         url_id = parse_ina_url(url)
@@ -169,7 +169,7 @@ def find_ina_id(page):
         return None
 
 
-def parse_ina_url(raw_url):
+def parse_ina_url(raw_url: str) -> Optional[iNaturalistID]:
     """Parses an iNaturalist URL into an iNaturalistID named tuple"""
     url = urllib.parse.urlparse(raw_url)
     path = url.path.split(sep="/")
@@ -179,7 +179,7 @@ def parse_ina_url(raw_url):
         return None
 
 
-def get_ina_data(ina_id):
+def get_ina_data(ina_id: iNaturalistID) -> Optional[dict]:
     """Make API request to iNaturalist from an ID and ID type
 
     Returns a dict of the API result
@@ -202,7 +202,9 @@ def get_ina_data(ina_id):
         return response_json.get("results", [None])[0]
 
 
-def find_photo_in_obs(page, obs_id, ina_data):
+def find_photo_in_obs(
+    page: pywikibot.FilePage, obs_id: iNaturalistID, ina_data: dict
+) -> Union[Tuple[iNaturalistID, None], Tuple[None, str]]:
     """Find the matching image in an iNaturalist observation
 
     Returns an iNaturalistID named tuple with the photo ID.
@@ -218,7 +220,7 @@ def find_photo_in_obs(page, obs_id, ina_data):
         return None, "notmatching"
 
 
-def compare_photo_hashes(page, photo):
+def compare_photo_hashes(page: pywikibot.FilePage, photo: iNaturalistID) -> bool:
     """Compares the photo on iNaturalist to the hash of the Commons file"""
     session = create_session()
     url = f"https://static.inaturalist.org/photos/{photo.id}/original.jpeg"
@@ -229,7 +231,7 @@ def compare_photo_hashes(page, photo):
     return compare_digest(com_hash, sha1sum.hexdigest())
 
 
-def find_ina_license(ina_data, photo):
+def find_ina_license(ina_data: dict, photo: iNaturalistID) -> str:
     """Find the image license in the iNaturalist API response
 
     If a license is found, the Commons template name is returned.
@@ -248,30 +250,30 @@ def find_ina_license(ina_data, photo):
         "cc-by-nc-sa": "Cc-by-nc-sa-4.0",
         "null": "arr",
     }
-    photos = ina_data.get("photos")
+    photos: list = ina_data.get("photos", [])
     for photo_data in photos:
         if str(photo_data.get("id")) == photo.id:
             license_code = photo_data.get("license_code")
             break
     else:
-        return None
+        return ""
 
-    return licenses.get(license_code)
+    return licenses.get(license_code, "")
 
 
-def find_ina_author(ina_data):
+def find_ina_author(ina_data: dict) -> str:
     """Find the image author in the iNaturalist API response
 
     Returns a string with the username of the iNaturalist contributor
     """
-    return ina_data.get("user", {}).get("login")
+    return ina_data.get("user", {}).get("login", "")
 
 
-def find_com_license(page):
+def find_com_license(page: pywikibot.BasePage) -> str:
     """Find the license template currently used on the Commons page
 
     Returns the first license template used on the page. If no templates
-    are found, return None
+    are found, return an empty string.
     """
     category = pywikibot.Category(site, "Category:Primary license tags (flat list)")
 
@@ -279,10 +281,10 @@ def find_com_license(page):
         if template in category.members(namespaces=10):
             return template.title(with_ns=False)
     else:
-        return None
+        return ""
 
 
-def check_licenses(ina_license, com_license):
+def check_licenses(ina_license: str, com_license: str) -> str:
     """Checks the Commons license against the iNaturalist license
 
     Returns a string with the status
@@ -309,13 +311,13 @@ def check_licenses(ina_license, com_license):
 
 
 def update_review(
-    page,
-    photo_id=None,
-    status="error",
-    author="",
-    review_license="",
-    upload_license="",
-):
+    page: pywikibot.BasePage,
+    photo_id: Optional[iNaturalistID] = None,
+    status: str = "error",
+    author: str = "",
+    review_license: str = "",
+    upload_license: str = "",
+) -> bool:
     """Updates the wikitext with the review status"""
     code = mwph.parse(page.text)
     template = make_template(
@@ -347,8 +349,12 @@ def update_review(
 
 
 def make_template(
-    photo_id=None, status="", author="", review_license="", upload_license="",
-):
+    photo_id: Optional[iNaturalistID] = None,
+    status: str = "",
+    author: str = "",
+    review_license: str = "",
+    upload_license: str = "",
+) -> mwph.Wikitext:
     """Constructs the iNaturalistReview template"""
     text = f"{{{{iNaturalistReview }}}}"
     code = mwph.parse(text)
@@ -358,6 +364,7 @@ def make_template(
     template.add("reviewer", username + " ", preserve_spacing=False)
 
     if status != "error":
+        assert isinstance(photo_id, iNaturalistID)
         code.insert(0, f"{{{{{review_license}}}}}")
         template.add(
             "author", author + " ", before="reviewdate", preserve_spacing=False
@@ -380,7 +387,9 @@ def make_template(
     return code
 
 
-def save_page(page, new_text, status, review_license):
+def save_page(
+    page: pywikibot.BasePage, new_text: str, status: str, review_license: str
+) -> None:
     """Replaces the wikitext of the specified page with new_text
 
     If the global simulate variable is true, the wikitext will be printed
@@ -398,7 +407,7 @@ def save_page(page, new_text, status, review_license):
         logging.info(page.text)
 
 
-def review_file(inpage):
+def review_file(inpage: pywikibot.BasePage) -> Optional[bool]:
     """Performs a license review on the input page
 
     inpage must be in the file namespace.
@@ -429,11 +438,18 @@ def review_file(inpage):
 
     ina_data = get_ina_data(wikitext_id)
 
+    if not ina_data:
+        logging.info(f"No data retrieved from iNaturalist!")
+        update_review(page, status="error")
+        return False
+
     photo_id, found = find_photo_in_obs(page, wikitext_id, ina_data)
     if found:
         logging.info(f"Images did not match: {found}")
         update_review(page, status="error")
         return False
+    else:
+        assert isinstance(photo_id, iNaturalistID)
 
     ina_license = find_ina_license(ina_data, photo_id)
     logging.info(f"iNaturalist License: {ina_license}")
@@ -455,7 +471,7 @@ def review_file(inpage):
     return True
 
 
-def main(page=None, total=None):
+def main(page: Optional[pywikibot.BasePage] = None, total: int = 0) -> None:
     """Main loop for program"""
     # Enumerate starts at 0, so to get N items, count to N-1.
     if page:
@@ -467,9 +483,9 @@ def main(page=None, total=None):
         # If total is non-zero, check that many files
         i = 0
         running = True
-        while (total is None) or (i < total):
+        while (not total) or (i < total):
             for page in files_to_check():
-                if i >= total:
+                if total and i >= total:
                     break
                 else:
                     i += 1

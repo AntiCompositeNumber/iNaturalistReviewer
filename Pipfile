@@ -8,6 +8,7 @@ flake8 = "*"
 pytest = "*"
 coveralls = "*"
 pipenv-to-requirements = "*"
+mypy = "*"
 
 [packages]
 requests = "*"

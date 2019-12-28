@@ -20,7 +20,7 @@ jobs:
         pip install -r requirements-dev.txt
     - name: Load pywikibot config
       env:
-          USER_CONFIG_PY: ${{ secrets.user_config_py }}
+        USER_CONFIG_PY: ${{ secrets.user_config_py }}
       run: echo $USER_CONFIG_PY > user-config.py
     - name: Lint with flake8
       run: |
@@ -28,11 +28,17 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: Enforce Black code style
+      run: |
+        black . --check --diff 
+    - name: Static type check with mypy
+      run :
+        mypy src
     - name: Test with pytest
       run: |
-        coverage run -m pytest -v -o addopts=
-    - name: Coveralls
-      env:        
+        coverage run -m pytest -o addopts=
+    - name: Send test coverage to Coveralls
+      env:
         COVERALLS_REPO_TOKEN: ${{ secrets.coveralls_repo_key }}
       continue-on-error: true
       run: |
