@@ -2,14 +2,14 @@ name: Notify
 
 on:
   issues:
-      types: [opened, labeled]
+      types: [labeled]
 
 jobs:
   notify:
 
     runs-on: ubuntu-latest
     
-    if: github.event.label.name == "prod-error"
+    if: github.event.label.name == 'prod-error'
 
     steps:
     - name: Fail
