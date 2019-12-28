@@ -1,0 +1,16 @@
+name: Notify
+
+on:
+  issues:
+      types: [opened, labeled]
+
+jobs:
+  notify:
+
+    runs-on: ubuntu-latest
+    
+    if: github.event["label"]["name"] == "prod-error"
+
+    steps:
+    - name: Fail
+      run: exit 1 
