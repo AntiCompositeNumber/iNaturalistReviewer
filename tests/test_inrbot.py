@@ -266,7 +266,7 @@ def test_find_ina_license_fail():
     with open(test_data_dir + "/ina_response.json") as f:
         ina_data = json.load(f)
     photo = id_tuple(id="12345", type="photos")
-    assert inrbot.find_ina_license(ina_data, photo) is None
+    assert inrbot.find_ina_license(ina_data, photo) == ""
 
 
 def test_find_ina_author():
@@ -286,7 +286,7 @@ def test_find_com_license_none():
     site = pywikibot.Site("commons", "commons")
     page = pywikibot.Page(site, "COM:PCP")
     license = inrbot.find_com_license(page)
-    assert license is None
+    assert license == ""
 
 
 def test_check_licenses_pass():

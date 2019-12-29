@@ -134,7 +134,7 @@ def check_runpage(override: bool = False) -> None:
         logging.warning("Ignoring runpage setting!")
 
 
-def check_can_run(page: pywikibot.BasePage) -> bool:
+def check_can_run(page: pywikibot.page.BasePage) -> bool:
     """Determinies if the bot should run on this page and returns a bool."""
 
     if (
@@ -148,7 +148,7 @@ def check_can_run(page: pywikibot.BasePage) -> bool:
         return True
 
 
-def files_to_check() -> pywikibot.BasePage:
+def files_to_check() -> pywikibot.page.BasePage:
     """Iterate list of files needing review from Commons"""
     category = pywikibot.Category(site, "Category:INaturalist review needed")
     for page in pagegenerators.CategorizedPageGenerator(
@@ -157,7 +157,7 @@ def files_to_check() -> pywikibot.BasePage:
         yield page
 
 
-def find_ina_id(page: pywikibot.BasePage) -> Optional[iNaturalistID]:
+def find_ina_id(page: pywikibot.page.BasePage) -> Optional[iNaturalistID]:
     """Returns an iNaturalistID tuple from wikitext"""
     for url in page.extlinks():
         url_id = parse_ina_url(url)
@@ -269,7 +269,7 @@ def find_ina_author(ina_data: dict) -> str:
     return ina_data.get("user", {}).get("login", "")
 
 
-def find_com_license(page: pywikibot.BasePage) -> str:
+def find_com_license(page: pywikibot.page.BasePage) -> str:
     """Find the license template currently used on the Commons page
 
     Returns the first license template used on the page. If no templates
@@ -311,7 +311,7 @@ def check_licenses(ina_license: str, com_license: str) -> str:
 
 
 def update_review(
-    page: pywikibot.BasePage,
+    page: pywikibot.page.BasePage,
     photo_id: Optional[iNaturalistID] = None,
     status: str = "error",
     author: str = "",
@@ -354,7 +354,7 @@ def make_template(
     author: str = "",
     review_license: str = "",
     upload_license: str = "",
-) -> mwph.Wikitext:
+) -> mwph.wikicode.Wikicode:
     """Constructs the iNaturalistReview template"""
     text = f"{{{{iNaturalistReview }}}}"
     code = mwph.parse(text)
@@ -388,7 +388,7 @@ def make_template(
 
 
 def save_page(
-    page: pywikibot.BasePage, new_text: str, status: str, review_license: str
+    page: pywikibot.page.BasePage, new_text: str, status: str, review_license: str
 ) -> None:
     """Replaces the wikitext of the specified page with new_text
 
@@ -407,7 +407,7 @@ def save_page(
         logging.info(page.text)
 
 
-def review_file(inpage: pywikibot.BasePage) -> Optional[bool]:
+def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
     """Performs a license review on the input page
 
     inpage must be in the file namespace.
@@ -471,7 +471,7 @@ def review_file(inpage: pywikibot.BasePage) -> Optional[bool]:
     return True
 
 
-def main(page: Optional[pywikibot.BasePage] = None, total: int = 0) -> None:
+def main(page: Optional[pywikibot.page.BasePage] = None, total: int = 0) -> None:
     """Main loop for program"""
     # Enumerate starts at 0, so to get N items, count to N-1.
     if page:
