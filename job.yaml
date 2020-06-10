@@ -1,0 +1,32 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: inaturalistreviewer.bot
+  namespace: inaturalistreviewer
+  labels:
+    name: inaturalistreviewer.bot
+    # The toolforge=tool label will cause $HOME and other paths to be mounted from Toolforge
+    toolforge: tool
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        name: inaturalistreviewer.bot
+        toolforge: tool
+    spec:
+      containers:
+        - name: bot
+          image: docker-registry.tools.wmflabs.org/toolforge-python37-sssd-base:latest
+          command: [ 
+            "/data/project/inaturalistreviewer/venv/bin/python3", 
+            "/data/project/inaturalistreviewer/iNaturalistReviewer/src/inrbot.py", 
+            "--auto" 
+          ]
+          workingDir: /data/project/inaturalistreviewer
+          env:
+            - name: HOME
+              value: /data/project/inaturalistreviewer
+          imagePullPolicy: Always
+      restartPolicy: Never
