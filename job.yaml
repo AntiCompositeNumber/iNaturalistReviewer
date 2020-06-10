@@ -3,7 +3,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: inaturalistreviewer.bot
-  namespace: inaturalistreviewer
+  namespace: tool-inaturalistreviewer
   labels:
     name: inaturalistreviewer.bot
     # The toolforge=tool label will cause $HOME and other paths to be mounted from Toolforge
@@ -22,7 +22,10 @@ spec:
           command: [ 
             "/data/project/inaturalistreviewer/venv/bin/python3", 
             "/data/project/inaturalistreviewer/iNaturalistReviewer/src/inrbot.py", 
-            "--auto" 
+          ]
+          args: [
+            "--auto",
+            "--simulate"
           ]
           workingDir: /data/project/inaturalistreviewer
           env:
