@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-# Copyright 2019 AntiCompositeNumber
+# Copyright 2020 AntiCompositeNumber
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,28 +18,26 @@
 # limitations under the License.
 
 import logging
+import logging.config
 import urllib.parse
 import hashlib
 import argparse
-import json
-import getpass
 import time
-import traceback
+from datetime import date
 from hmac import compare_digest
-from datetime import date, datetime
-from typing import Optional, Tuple, NamedTuple, Set, Union
 import pywikibot  # type: ignore
 import pywikibot.pagegenerators as pagegenerators  # type: ignore
 import mwparserfromhell as mwph  # type: ignore
 import requests
+import utils
 
-__version__ = "0.2.2"
+from typing import Optional, Tuple, NamedTuple, Set, Union
+
+__version__ = "0.3.0"
 username = "iNaturalistReviewBot"
 
-logging.basicConfig(filename="inrbot.log", level=logging.INFO)
-# Quiet pywikibot's overly-verbose logging
-pywlog = logging.getLogger("pywiki")
-pywlog.setLevel("INFO")
+logging.config.dictConfig(utils.logger_config("inrbot", filename="inrbot.log"))
+logger = logging.getLogger("inrbot")
 
 site = pywikibot.Site("commons", "commons")
 iNaturalistID = NamedTuple("iNaturalistID", [("id", str), ("type", str)])
@@ -131,7 +129,7 @@ def check_runpage(override: bool = False) -> None:
         if not runpage:
             raise pywikibot.UserBlocked("Runpage is false, quitting...")
     else:
-        logging.warning("Ignoring runpage setting!")
+        logger.warning("Ignoring runpage setting!")
 
 
 def check_can_run(page: pywikibot.page.BasePage) -> bool:
@@ -139,7 +137,7 @@ def check_can_run(page: pywikibot.page.BasePage) -> bool:
 
     if (
         (page.title() in skip)
-        or (not page.canBeEdited())
+        or (not page.has_permission('edit'))
         or (not page.botMayEdit())
         or ("{{iNaturalistreview}}" not in page.text)
     ):
@@ -354,7 +352,7 @@ def make_template(
     upload_license: str = "",
 ) -> mwph.wikicode.Wikicode:
     """Constructs the iNaturalistReview template"""
-    text = "{{{{iNaturalistReview }}}}"
+    text = "{{iNaturalistReview }}"
     code = mwph.parse(text)
     template = code.get(0)
     template.add("status", status + " ", preserve_spacing=False)
@@ -397,12 +395,12 @@ def save_page(
     page.text = new_text
     if not simulate:
         check_runpage(run_override)
-        logging.info(f"Saving {page.title()}")
+        logger.info(f"Saving {page.title()}")
         page.save(summary=summary)
     else:
-        logging.info("Saving disabled")
-        logging.info(summary)
-        logging.info(page.text)
+        logger.info("Saving disabled")
+        logger.info(summary)
+        logger.info(page.text)
 
 
 def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
@@ -423,41 +421,41 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
     if not check_can_run(page):
         return None
 
-    logging.info(f"Checking {page.title()}")
+    logger.info(f"Checking {page.title()}")
 
     wikitext_id = find_ina_id(page)
-    logging.info(f"ID found in wikitext: {wikitext_id}")
+    logger.info(f"ID found in wikitext: {wikitext_id}")
     if wikitext_id is None:
         return None
     elif wikitext_id.type != "observations":
-        logging.info("Not a supported endpoint.")
+        logger.info("Not a supported endpoint.")
         update_review(page, status="error")
         return False
 
     ina_data = get_ina_data(wikitext_id)
 
     if not ina_data:
-        logging.info("No data retrieved from iNaturalist!")
+        logger.info("No data retrieved from iNaturalist!")
         update_review(page, status="error")
         return False
 
     photo_id, found = find_photo_in_obs(page, wikitext_id, ina_data)
     if found:
-        logging.info(f"Images did not match: {found}")
+        logger.info(f"Images did not match: {found}")
         update_review(page, status="error")
         return False
     else:
         assert isinstance(photo_id, iNaturalistID)
 
     ina_license = find_ina_license(ina_data, photo_id)
-    logging.info(f"iNaturalist License: {ina_license}")
+    logger.info(f"iNaturalist License: {ina_license}")
     ina_author = find_ina_author(ina_data)
-    logging.info(f"Author: {ina_author}")
+    logger.info(f"Author: {ina_author}")
 
     com_license = find_com_license(page)
-    logging.info(f"Commons License: {com_license}")
+    logger.info(f"Commons License: {com_license}")
     status = check_licenses(ina_license, com_license)
-    logging.info(f"Status: {status}")
+    logger.info(f"Status: {status}")
     update_review(
         page,
         photo_id,
@@ -492,15 +490,17 @@ def main(page: Optional[pywikibot.page.BasePage] = None, total: int = 0) -> None
                     review_file(page)
                 except pywikibot.UserBlocked as err:
                     # Blocks and runpage checks always stop
-                    exception_to_issue(err, reraise=True)
+                    logger.exception(err)
+                    raise
                 except Exception as err:
                     if running:
-                        exception_to_issue(err, reraise=False)
+                        logger.exception(err)
                         running = False
                     else:
                         # If this exception happened after running out
                         # of pages or another exception, stop the bot.
-                        exception_to_issue(err, reraise=True)
+                        logger.exception(err)
+                        raise
 
                 time.sleep(60)
                 running = True
@@ -508,7 +508,7 @@ def main(page: Optional[pywikibot.page.BasePage] = None, total: int = 0) -> None
                 # If the for loop drops out, there are no more pages right now
                 if running:
                     running = False
-                    logging.warning("Out of pages to check!")
+                    logger.warning("Out of pages to check!")
                 # May need to adjust this number depending on load
                 time.sleep(300)
 
