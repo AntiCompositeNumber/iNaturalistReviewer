@@ -151,9 +151,7 @@ def check_can_run(page: pywikibot.page.BasePage) -> bool:
 def files_to_check() -> pywikibot.page.BasePage:
     """Iterate list of files needing review from Commons"""
     category = pywikibot.Category(site, "Category:INaturalist review needed")
-    for page in pagegenerators.CategorizedPageGenerator(
-        category, namespaces=6
-    ):
+    for page in pagegenerators.CategorizedPageGenerator(category, namespaces=6):
         yield page
 
 
