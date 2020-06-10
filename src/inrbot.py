@@ -33,7 +33,7 @@ import pywikibot.pagegenerators as pagegenerators  # type: ignore
 import mwparserfromhell as mwph  # type: ignore
 import requests
 
-__version__ = "0.2.0"
+__version__ = "0.2.2"
 username = "iNaturalistReviewBot"
 
 logging.basicConfig(filename="inrbot.log", level=logging.INFO)
@@ -152,7 +152,7 @@ def files_to_check() -> pywikibot.page.BasePage:
     """Iterate list of files needing review from Commons"""
     category = pywikibot.Category(site, "Category:INaturalist review needed")
     for page in pagegenerators.CategorizedPageGenerator(
-        category, namespaces=6, site=site,
+        category, namespaces=6
     ):
         yield page
 
@@ -356,7 +356,7 @@ def make_template(
     upload_license: str = "",
 ) -> mwph.wikicode.Wikicode:
     """Constructs the iNaturalistReview template"""
-    text = f"{{{{iNaturalistReview }}}}"
+    text = "{{{{iNaturalistReview }}}}"
     code = mwph.parse(text)
     template = code.get(0)
     template.add("status", status + " ", preserve_spacing=False)
@@ -402,7 +402,7 @@ def save_page(
         logging.info(f"Saving {page.title()}")
         page.save(summary=summary)
     else:
-        logging.info(f"Saving disabled")
+        logging.info("Saving disabled")
         logging.info(summary)
         logging.info(page.text)
 
@@ -439,7 +439,7 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
     ina_data = get_ina_data(wikitext_id)
 
     if not ina_data:
-        logging.info(f"No data retrieved from iNaturalist!")
+        logging.info("No data retrieved from iNaturalist!")
         update_review(page, status="error")
         return False
 
