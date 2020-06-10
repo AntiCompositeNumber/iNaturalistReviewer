@@ -28,19 +28,12 @@ import sys
 import os
 
 _work_dir_ = os.path.dirname(__file__)
-sys.path.append(os.path.realpath(_work_dir_ + "/.."))
+sys.path.append(os.path.realpath(_work_dir_ + "/../src"))
 
-import src.inrbot as inrbot  # noqa: F401
+import inrbot  # noqa: E402
 
 test_data_dir = os.path.join(_work_dir_, "testdata")
 id_tuple = inrbot.iNaturalistID
-
-
-def test_create_session():
-    s1 = inrbot.create_session()
-    assert type(s1) is requests.sessions.Session
-    s2 = inrbot.create_session()
-    assert s1 is s2
 
 
 def test_check_can_run_skip():
@@ -194,8 +187,8 @@ def test_get_ina_data_photo():
 def test_get_ina_data_bad_data():
     ina_id = id_tuple(id="36885889", type="observations")
     mock_session = mock.MagicMock()
-    mock_session.return_value.get.return_value.json.return_value = {"total_results": 1}
-    with mock.patch("src.inrbot.create_session", mock_session):
+    mock_session.get.return_value.json.return_value = {"total_results": 1}
+    with mock.patch("inrbot.session", mock_session):
         response = inrbot.get_ina_data(ina_id)
 
     assert response is None
@@ -204,8 +197,8 @@ def test_get_ina_data_bad_data():
 def test_get_ina_data_wrong_number():
     ina_id = id_tuple(id="36885889", type="observations")
     mock_session = mock.MagicMock()
-    mock_session.return_value.get.return_value.json.return_value = {"total_results": 2}
-    with mock.patch("src.inrbot.create_session", mock_session):
+    mock_session.get.return_value.json.return_value = {"total_results": 2}
+    with mock.patch("inrbot.session", mock_session):
         response = inrbot.get_ina_data(ina_id)
 
     assert response is None
@@ -214,8 +207,8 @@ def test_get_ina_data_wrong_number():
 def test_get_ina_data_error():
     ina_id = id_tuple(id="36885889", type="observations")
     mock_session = mock.MagicMock()
-    mock_session.return_value.get.side_effect = requests.exceptions.HTTPError
-    with mock.patch("src.inrbot.create_session", mock_session):
+    mock_session.get.side_effect = requests.exceptions.HTTPError
+    with mock.patch("inrbot.session", mock_session):
         response = inrbot.get_ina_data(ina_id)
 
     assert response is None
@@ -324,7 +317,7 @@ def test_update_review_section():
     photo_id = id_tuple(type="observations", id="11505950")
 
     save_page = mock.Mock()
-    with mock.patch("src.inrbot.save_page", save_page):
+    with mock.patch("inrbot.save_page", save_page):
         inrbot.update_review(
             page,
             photo_id,
@@ -350,7 +343,7 @@ def test_update_review_section_fail():
     photo_id = id_tuple(type="observations", id="11505950")
 
     save_page = mock.Mock()
-    with mock.patch("src.inrbot.save_page", save_page):
+    with mock.patch("inrbot.save_page", save_page):
         inrbot.update_review(
             page,
             photo_id,
@@ -376,7 +369,7 @@ def test_update_review_section_error():
         page.text = f.read()
 
     save_page = mock.Mock()
-    with mock.patch("src.inrbot.save_page", save_page):
+    with mock.patch("inrbot.save_page", save_page):
         inrbot.update_review(
             page, status="error",
         )
@@ -397,7 +390,7 @@ def test_update_review_section_newline():
     photo_id = id_tuple(type="observations", id="11505950")
 
     save_page = mock.Mock()
-    with mock.patch("src.inrbot.save_page", save_page):
+    with mock.patch("inrbot.save_page", save_page):
         inrbot.update_review(
             page,
             photo_id,
@@ -423,7 +416,7 @@ def test_update_review_section_change():
     photo_id = id_tuple(type="observations", id="11505950")
 
     save_page = mock.Mock()
-    with mock.patch("src.inrbot.save_page", save_page):
+    with mock.patch("inrbot.save_page", save_page):
         inrbot.update_review(
             page,
             photo_id,
@@ -450,7 +443,7 @@ def test_update_review_para():
     photo_id = id_tuple(type="observations", id="11505950")
 
     save_page = mock.Mock()
-    with mock.patch("src.inrbot.save_page", save_page):
+    with mock.patch("inrbot.save_page", save_page):
         inrbot.update_review(
             page,
             photo_id,
@@ -476,7 +469,7 @@ def test_update_review_para_change():
     photo_id = id_tuple(type="observations", id="11505950")
 
     save_page = mock.Mock()
-    with mock.patch("src.inrbot.save_page", save_page):
+    with mock.patch("inrbot.save_page", save_page):
         inrbot.update_review(
             page,
             photo_id,
@@ -503,7 +496,7 @@ def test_update_review_free():
     photo_id = id_tuple(type="observations", id="11505950")
 
     save_page = mock.Mock()
-    with mock.patch("src.inrbot.save_page", save_page):
+    with mock.patch("inrbot.save_page", save_page):
         inrbot.update_review(
             page,
             photo_id,
@@ -529,7 +522,7 @@ def test_update_review_free_change():
     photo_id = id_tuple(type="observations", id="11505950")
 
     save_page = mock.Mock()
-    with mock.patch("src.inrbot.save_page", save_page):
+    with mock.patch("inrbot.save_page", save_page):
         inrbot.update_review(
             page,
             photo_id,
@@ -632,9 +625,9 @@ def test_main_auto_total():
     files_to_check = mock.MagicMock(return_value=range(0, 10))
     total = 4
 
-    with mock.patch("src.inrbot.review_file", review_file):
+    with mock.patch("inrbot.review_file", review_file):
         with mock.patch("time.sleep", sleep):
-            with mock.patch("src.inrbot.files_to_check", files_to_check):
+            with mock.patch("inrbot.files_to_check", files_to_check):
                 inrbot.main(total=total)
 
     assert review_file.call_count == total
@@ -648,9 +641,9 @@ def test_main_auto_end():
     files_to_check = mock.MagicMock(return_value=range(0, 3))
     total = 7
 
-    with mock.patch("src.inrbot.review_file", review_file):
+    with mock.patch("inrbot.review_file", review_file):
         with mock.patch("time.sleep", sleep):
-            with mock.patch("src.inrbot.files_to_check", files_to_check):
+            with mock.patch("inrbot.files_to_check", files_to_check):
                 inrbot.main(total=total)
 
     assert review_file.call_count == total
@@ -665,9 +658,9 @@ def test_main_auto_blocked():
     sleep = mock.MagicMock()
     files_to_check = mock.MagicMock(return_value=range(0, 10))
 
-    with mock.patch("src.inrbot.review_file", review_file):
+    with mock.patch("inrbot.review_file", review_file):
         with mock.patch("time.sleep", sleep):
-            with mock.patch("src.inrbot.files_to_check", files_to_check):
+            with mock.patch("inrbot.files_to_check", files_to_check):
                 with pytest.raises(pywikibot.UserBlocked):
                     inrbot.main(total=1)
 
@@ -682,9 +675,9 @@ def test_main_auto_exception():
     files_to_check = mock.MagicMock(return_value=range(0, 10))
     total = 2
 
-    with mock.patch("src.inrbot.review_file", review_file):
+    with mock.patch("inrbot.review_file", review_file):
         with mock.patch("time.sleep", sleep):
-            with mock.patch("src.inrbot.files_to_check", files_to_check):
+            with mock.patch("inrbot.files_to_check", files_to_check):
                 inrbot.main(total=total)
 
     assert review_file.call_count == total
@@ -696,7 +689,7 @@ def test_main_single():
     review_file = mock.MagicMock()
     page = mock.MagicMock()
 
-    with mock.patch("src.inrbot.review_file", review_file):
+    with mock.patch("inrbot.review_file", review_file):
         inrbot.main(page=page)
 
     review_file.assert_called_once_with(page)

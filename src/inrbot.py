@@ -41,70 +41,11 @@ logger = logging.getLogger("inrbot")
 
 site = pywikibot.Site("commons", "commons")
 iNaturalistID = NamedTuple("iNaturalistID", [("id", str), ("type", str)])
-_session = None
 skip: Set[str] = set()
 
 
-def exception_to_issue(err: BaseException, reraise: bool = True) -> None:
-    """Takes an exception, creates a GitHub issue, then re-raises.
-
-    Tools running in k8s on Toolforge can't send mail easily,
-    which means that we have to make failure loud on our own.
-    """
-    if getpass.getuser() != "tools.inaturalistreviewer":
-        if reraise:
-            raise
-        logging.exception(err)
-        return
-
-    try:
-        with open("/data/project/inaturalistreviewer/github_config.json") as f:
-            config = json.load(f)
-    except FileNotFoundError:
-        pass
-    else:
-        tb = traceback.format_exception(None, err, err.__traceback__)
-        if reraise:
-            status = "stopped"
-        else:
-            status = "continued"
-        requests.post(
-            "https://api.github.com/repos/"
-            "AntiCompositeNumber/iNaturalistReviewer/issues",
-            json={
-                "title": f"Unhandled {type(err).__name__} on Toolforge "
-                f"at {date.today().isoformat()}",
-                "body": "".join(tb)
-                + (
-                    f"\nTime: {datetime.now().isoformat()}\n\n"
-                    f"Version: inrbot {__version__}\n\n"
-                    f"The bot has {status} after this exception."
-                ),
-                "assignees": ["AntiCompositeNumber"],
-                "labels": ["prod-error"],
-            },
-            auth=(config["username"], config["token"]),
-        )
-
-    if reraise:
-        raise
-    logging.exception(err)
-    return
-
-
-def create_session() -> requests.Session:
-    """Handles the creation of a Requests session with a descriptive UA
-
-    If there is already a session, returns that session.
-    Otherwise, a new session is created and returned
-    """
-    global _session
-
-    if _session:
-        return _session
-
-    _session = requests.Session()
-    _session.headers.update(
+session = requests.Session()
+session.headers.update(
         {
             "user-agent": f"Bot iNaturalistReviewer/{__version__} "
             "on Wikimedia Toolforge "
@@ -114,7 +55,6 @@ def create_session() -> requests.Session:
             f"Python requests/{requests.__version__}"
         }
     )
-    return _session
 
 
 def check_runpage(override: bool = False) -> None:
@@ -180,7 +120,6 @@ def get_ina_data(ina_id: iNaturalistID) -> Optional[dict]:
 
     Returns a dict of the API result
     """
-    session = create_session()
     if ina_id.type == "observations":
         url = f"https://api.inaturalist.org/v1/observations/{ina_id.id}"
     else:
@@ -218,7 +157,6 @@ def find_photo_in_obs(
 
 def compare_photo_hashes(page: pywikibot.FilePage, photo: iNaturalistID) -> bool:
     """Compares the photo on iNaturalist to the hash of the Commons file"""
-    session = create_session()
     url = f"https://static.inaturalist.org/photos/{photo.id}/original.jpeg"
     response = session.get(url)
     sha1sum = hashlib.sha1()
