@@ -36,7 +36,9 @@ from typing import Optional, Tuple, NamedTuple, Set, Union
 __version__ = "0.3.0"
 username = "iNaturalistReviewBot"
 
-logging.config.dictConfig(utils.logger_config("inrbot", filename="inrbot.log"))
+logging.config.dictConfig(
+    utils.logger_config("inrbot", level="VERBOSE", filename="inrbot.log")
+)
 logger = logging.getLogger("inrbot")
 
 site = pywikibot.Site("commons", "commons")
@@ -46,30 +48,15 @@ skip: Set[str] = set()
 
 session = requests.Session()
 session.headers.update(
-        {
-            "user-agent": f"Bot iNaturalistReviewer/{__version__} "
-            "on Wikimedia Toolforge "
-            f"(Contact: https://commons.wikimedia.org/wiki/User:{username}; "
-            "https://www.inaturalist.org/people/anticompositenumber "
-            "tools.inaturalistreviewer@tools.wmflabs.org) "
-            f"Python requests/{requests.__version__}"
-        }
-    )
-
-
-def check_runpage(override: bool = False) -> None:
-    """Checks the Commons runpage to determine if the bot can run.
-
-    If the runpage does not end with True, an exception is raised.
-    This check can be ignored by setting override to True
-    """
-    if not override:
-        page = pywikibot.Page(site, "User:INaturalistReviewBot/Run")
-        runpage = page.text.endswith("True")
-        if not runpage:
-            raise pywikibot.UserBlocked("Runpage is false, quitting...")
-    else:
-        logger.warning("Ignoring runpage setting!")
+    {
+        "user-agent": f"Bot iNaturalistReviewer/{__version__} "
+        "on Wikimedia Toolforge "
+        f"(Contact: https://commons.wikimedia.org/wiki/User:{username}; "
+        "https://www.inaturalist.org/people/anticompositenumber "
+        "tools.inaturalistreviewer@tools.wmflabs.org) "
+        f"Python requests/{requests.__version__}"
+    }
+)
 
 
 def check_can_run(page: pywikibot.page.BasePage) -> bool:
@@ -77,7 +64,7 @@ def check_can_run(page: pywikibot.page.BasePage) -> bool:
 
     if (
         (page.title() in skip)
-        or (not page.has_permission('edit'))
+        or (not page.has_permission("edit"))
         or (not page.botMayEdit())
         or ("{{iNaturalistreview}}" not in page.text)
     ):
@@ -330,15 +317,16 @@ def save_page(
     instead of saved to Commons.
     """
     summary = f"License review: {status} {review_license} (inrbot {__version__}"
-    page.text = new_text
     if not simulate:
-        check_runpage(run_override)
+        utils.check_runpage(site, run_override)
         logger.info(f"Saving {page.title()}")
-        page.save(summary=summary)
+        utils.save_page(
+            text=new_text, page=page, summary=summary, bot=False, minor=False
+        )
     else:
         logger.info("Saving disabled")
         logger.info(summary)
-        logger.info(page.text)
+        logger.info(new_text)
 
 
 def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
@@ -355,7 +343,7 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
     except ValueError:
         return None
 
-    check_runpage(run_override)
+    utils.check_runpage(site, run_override)
     if not check_can_run(page):
         return None
 
@@ -373,7 +361,7 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
     ina_data = get_ina_data(wikitext_id)
 
     if not ina_data:
-        logger.info("No data retrieved from iNaturalist!")
+        logger.warning("No data retrieved from iNaturalist!")
         update_review(page, status="error")
         return False
 
@@ -386,14 +374,14 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
         assert isinstance(photo_id, iNaturalistID)
 
     ina_license = find_ina_license(ina_data, photo_id)
-    logger.info(f"iNaturalist License: {ina_license}")
+    logger.debug(f"iNaturalist License: {ina_license}")
     ina_author = find_ina_author(ina_data)
-    logger.info(f"Author: {ina_author}")
+    logger.debug(f"Author: {ina_author}")
 
     com_license = find_com_license(page)
-    logger.info(f"Commons License: {com_license}")
+    logger.debug(f"Commons License: {com_license}")
     status = check_licenses(ina_license, com_license)
-    logger.info(f"Status: {status}")
+    logger.debug(f"Status: {status}")
     update_review(
         page,
         photo_id,

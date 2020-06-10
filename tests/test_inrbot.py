@@ -31,6 +31,7 @@ _work_dir_ = os.path.dirname(__file__)
 sys.path.append(os.path.realpath(_work_dir_ + "/../src"))
 
 import inrbot  # noqa: E402
+import utils  # noqa: E402
 
 test_data_dir = os.path.join(_work_dir_, "testdata")
 id_tuple = inrbot.iNaturalistID
@@ -77,7 +78,7 @@ def test_check_runpage_run():
     page.return_value.text = "<!-- Set to False to stop bot. -->\nTrue"
 
     with mock.patch("pywikibot.Page", page):
-        inrbot.check_runpage()
+        utils.check_runpage(inrbot.site)
 
 
 def test_check_runpage_stop():
@@ -86,7 +87,7 @@ def test_check_runpage_stop():
 
     with pytest.raises(pywikibot.UserBlocked):
         with mock.patch("pywikibot.Page", page):
-            inrbot.check_runpage()
+            utils.check_runpage(inrbot.site)
 
 
 def test_check_runpage_stop_anything():
@@ -95,7 +96,7 @@ def test_check_runpage_stop_anything():
 
     with pytest.raises(pywikibot.UserBlocked):
         with mock.patch("pywikibot.Page", page):
-            inrbot.check_runpage()
+            utils.check_runpage(inrbot.site)
 
 
 def test_check_runpage_stop_blank():
@@ -104,7 +105,7 @@ def test_check_runpage_stop_blank():
 
     with pytest.raises(pywikibot.UserBlocked):
         with mock.patch("pywikibot.Page", page):
-            inrbot.check_runpage()
+            utils.check_runpage(inrbot.site)
 
 
 def test_check_runpage_override():
@@ -112,7 +113,7 @@ def test_check_runpage_override():
     page.return_value.text = "<!-- Set to False to stop bot. -->\nFalse"
 
     with mock.patch("pywikibot.Page", page):
-        inrbot.check_runpage(override=True)
+        utils.check_runpage(inrbot.site, override=True)
 
 
 def test_files_to_check():
