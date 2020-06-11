@@ -66,10 +66,7 @@ def check_can_run(page: pywikibot.page.BasePage) -> bool:
         (page.title() in skip)
         or (not page.has_permission("edit"))
         or (not page.botMayEdit())
-        or (
-            pywikibot.Page(site, "Template:iNaturalistreview")
-            not in set(page.itertemplates())
-        )
+        or ("{{iNaturalistreview}}" not in page.text)
     ):
         return False
     else:
