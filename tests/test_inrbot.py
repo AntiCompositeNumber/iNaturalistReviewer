@@ -223,8 +223,35 @@ def test_find_photo_in_obs():
     ina_data = inrbot.get_ina_data(obs_id)
 
     photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
-    assert found is None
-    assert photo == id_tuple(id="58381754", type="photos")
+    assert found == "sha1"
+    assert photo._replace(url="") == id_tuple(id="58381754", type="photos")
+
+
+@pytest.mark.ext_web
+def test_find_photo_in_obs_ssim_pass():
+    page = pywikibot.FilePage(inrbot.site, "File:Acomys subspinosus 15087534.jpg")
+    obs_id = id_tuple(id="10783720", type="observations")
+    ina_data = inrbot.get_ina_data(obs_id)
+    with mock.patch("inrbot.compare_photo_hashes", return_value=False):
+        photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
+
+    assert found == "ssim"
+    assert photo._replace(url="") == id_tuple(id="15087534", type="photos")
+
+
+@pytest.mark.ext_web
+def test_find_photo_in_obs_ssim_fail():
+    page = pywikibot.FilePage(inrbot.site, "File:Acomys subspinosus 15087534.jpg")
+    obs_id = id_tuple(id="10783720", type="observations")
+    ina_data = inrbot.get_ina_data(obs_id)
+    thumb_url = page.get_file_url(url_width=340)
+    mock_url = mock.Mock(return_value=thumb_url)
+    page.get_file_url = mock_url
+    with mock.patch("inrbot.compare_photo_hashes", return_value=False):
+        photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
+
+    assert found == "notmatching"
+    assert photo is None
 
 
 def test_find_photo_in_obs_notfound():

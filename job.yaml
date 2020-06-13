@@ -31,5 +31,7 @@ spec:
           env:
             - name: HOME
               value: /data/project/inaturalistreviewer
+            - name: LOG_SMTP
+              value: true
           imagePullPolicy: Always
       restartPolicy: Never

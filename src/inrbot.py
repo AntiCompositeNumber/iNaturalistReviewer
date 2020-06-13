@@ -30,10 +30,13 @@ import pywikibot.pagegenerators as pagegenerators  # type: ignore
 import mwparserfromhell as mwph  # type: ignore
 import requests
 import utils
+from PIL import Image  # type: ignore
+import ssim as pyssim  # type: ignore
+from io import BytesIO
 
-from typing import Optional, Tuple, NamedTuple, Set, Union
+from typing import Optional, Tuple, NamedTuple, Set
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(
@@ -42,7 +45,6 @@ logging.config.dictConfig(
 logger = logging.getLogger("inrbot")
 
 site = pywikibot.Site("commons", "commons")
-iNaturalistID = NamedTuple("iNaturalistID", [("id", str), ("type", str)])
 skip: Set[str] = set()
 
 
@@ -57,6 +59,12 @@ session.headers.update(
         f"Python requests/{requests.__version__}"
     }
 )
+
+
+class iNaturalistID(NamedTuple):
+    id: str
+    type: str
+    url: str = ""
 
 
 def check_can_run(page: pywikibot.page.BasePage) -> bool:
@@ -102,7 +110,9 @@ def parse_ina_url(raw_url: str) -> Optional[iNaturalistID]:
         return None
 
 
-def get_ina_data(ina_id: iNaturalistID) -> Optional[dict]:
+def get_ina_data(
+    ina_id: iNaturalistID, throttle: Optional[utils.Throttle] = None
+) -> Optional[dict]:
     """Make API request to iNaturalist from an ID and ID type
 
     Returns a dict of the API result
@@ -112,6 +122,8 @@ def get_ina_data(ina_id: iNaturalistID) -> Optional[dict]:
     else:
         return None
 
+    if throttle:
+        throttle.throttle()
     try:
         response = session.get(url, headers={"Accept": "application/json"})
         response.raise_for_status()
@@ -125,31 +137,94 @@ def get_ina_data(ina_id: iNaturalistID) -> Optional[dict]:
 
 
 def find_photo_in_obs(
-    page: pywikibot.FilePage, obs_id: iNaturalistID, ina_data: dict
-) -> Union[Tuple[iNaturalistID, None], Tuple[None, str]]:
+    page: pywikibot.FilePage,
+    obs_id: iNaturalistID,
+    ina_data: dict,
+    throttle: Optional[utils.Throttle] = None,
+) -> Tuple[Optional[iNaturalistID], str]:
     """Find the matching image in an iNaturalist observation
 
     Returns an iNaturalistID named tuple with the photo ID.
     """
-    photos = [photo["id"] for photo in ina_data["photos"]]
+    photos = [
+        iNaturalistID(type="photos", id=str(photo["id"]), url=photo["url"])
+        for photo in ina_data["photos"]
+    ]
     if len(photos) < 1:
         return None, "notfound"
-    for photo_id in photos:
-        photo = iNaturalistID(type="photos", id=str(photo_id))
+
+    logger.debug("Checking sha1 hashes")
+    for photo in photos:
+        logger.debug(f"Current photo: {photo}")
         if compare_photo_hashes(page, photo):
-            return photo, None
+            return photo, "sha1"
+        if throttle:
+            throttle.throttle()
+
+    # Hash check failed, use SSIM instead
+    logger.debug("Hash check failed, checking SSIM scores")
+    try:
+        orig = get_commons_image(page)
+    except Exception:
+        pass
     else:
-        return None, "notmatching"
+        for photo in photos:
+            logger.debug(f"Current photo: {photo}")
+            if compare_ssim(orig, photo):
+                return photo, "ssim"
+            if throttle:
+                throttle.throttle()
+
+    return None, "notmatching"
 
 
 def compare_photo_hashes(page: pywikibot.FilePage, photo: iNaturalistID) -> bool:
     """Compares the photo on iNaturalist to the hash of the Commons file"""
-    url = f"https://static.inaturalist.org/photos/{photo.id}/original.jpeg"
-    response = session.get(url)
     sha1sum = hashlib.sha1()
-    sha1sum.update(response.content)
+    try:
+        image = utils.retry(get_ina_image, 3, photo=photo)
+    except Exception as err:
+        logger.exception(err)
+        return False
+    sha1sum.update(image)
     com_hash = page.latest_file_info.sha1
-    return compare_digest(com_hash, sha1sum.hexdigest())
+    ina_hash = sha1sum.hexdigest()
+    logger.debug(f"Commons sha1sum:     {com_hash}")
+    logger.debug(f"iNaturalist sha1sum: {ina_hash}")
+    return compare_digest(com_hash, ina_hash)
+
+
+def get_ina_image(photo: iNaturalistID, final: bool = False) -> bytes:
+    if photo.url:
+        extension = photo.url.rpartition("?")[0].rpartition(".")[2]
+    else:
+        extension == "jpeg"
+    url = f"https://static.inaturalist.org/photos/{photo.id}/original.{extension}"
+    response = session.get(url)
+    if response.status_code == 403 and not final:
+        return get_ina_image(photo._replace(url=url.replace("jpeg", "jpg")), final=True)
+    response.raise_for_status()
+    return response.content
+
+
+def get_commons_image(page: pywikibot.FilePage) -> Image.Image:
+    url = page.get_file_url()
+    response = session.get(url)
+    response.raise_for_status()
+    return Image.open(BytesIO(response.content))
+
+
+def compare_ssim(orig: Image, photo: iNaturalistID, min_ssim: float = 0.9) -> bool:
+    try:
+        image = utils.retry(get_ina_image, 3, photo=photo)
+    except Exception as err:
+        logger.exception(err)
+        return False
+    ina_image = Image.open(BytesIO(image))
+
+    ssim = pyssim.compute_ssim(orig, ina_image)
+    logger.debug(f"SSIM value: {ssim}")
+    return ssim > min_ssim
 
 
 def find_ina_license(ina_data: dict, photo: iNaturalistID) -> str:
@@ -358,15 +433,16 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
         update_review(page, status="error")
         return False
 
-    ina_data = get_ina_data(wikitext_id)
+    ina_throttle = utils.Throttle(10)
+    ina_data = get_ina_data(wikitext_id, ina_throttle)
 
     if not ina_data:
         logger.warning("No data retrieved from iNaturalist!")
         update_review(page, status="error")
         return False
 
-    photo_id, found = find_photo_in_obs(page, wikitext_id, ina_data)
-    if found:
+    photo_id, found = find_photo_in_obs(page, wikitext_id, ina_data, ina_throttle)
+    if photo_id is None:
         logger.info(f"Images did not match: {found}")
         update_review(page, status="error")
         return False
