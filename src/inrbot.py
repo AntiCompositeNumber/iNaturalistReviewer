@@ -36,7 +36,7 @@ import requests
 from PIL import Image  # type: ignore
 import ssim as pyssim  # type: ignore
 
-from typing import NamedTuple, Optional, Set, Tuple
+from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
 import utils
 
@@ -322,7 +322,7 @@ def check_licenses(ina_license: str, com_license: str) -> str:
 
 
 class Aliases:
-    alias_cache = {}
+    alias_cache: Dict[str, Dict[str, Union[float, Set[str]]]] = {}
 
     def __init__(self, title: str) -> None:
         self.title: str = title
