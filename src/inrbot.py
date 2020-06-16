@@ -17,26 +17,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
+import hashlib
+import json
 import logging
 import logging.config
-import urllib.parse
-import hashlib
-import argparse
+import string
 import time
+import urllib.parse
 from datetime import date
 from hmac import compare_digest
-import pywikibot  # type: ignore
-import pywikibot.pagegenerators as pagegenerators  # type: ignore
-import mwparserfromhell as mwph  # type: ignore
-import requests
-import utils
-from PIL import Image  # type: ignore
-import ssim as pyssim  # type: ignore
 from io import BytesIO
 
-from typing import Optional, Tuple, NamedTuple, Set
+import mwparserfromhell as mwph  # type: ignore
+import pywikibot  # type: ignore
+import pywikibot.pagegenerators as pagegenerators  # type: ignore
+import requests
+from PIL import Image  # type: ignore
+import ssim as pyssim  # type: ignore
 
-__version__ = "0.4.0"
+from typing import NamedTuple, Optional, Set, Tuple
+
+import utils
+
+__version__ = "0.5.0"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(
@@ -46,8 +50,6 @@ logger = logging.getLogger("inrbot")
 
 site = pywikibot.Site("commons", "commons")
 skip: Set[str] = set()
-
-
 session = requests.Session()
 session.headers.update(
     {
@@ -65,6 +67,18 @@ class iNaturalistID(NamedTuple):
     id: str
     type: str
     url: str = ""
+
+    def __str__(self):
+        return f"https://www.inaturalist.org/{self.type}/{self.id}"
+
+
+def get_config():
+    """Load on-wiki configuration"""
+    page = pywikibot.Page(site, "User:iNaturalistReviewBot/config.json")
+    conf_json = json.loads(page.text)
+    logger.info(f"Loaded config from {page.title(as_link=True)}")
+    logger.debug(conf_json)
+    return conf_json
 
 
 def check_can_run(page: pywikibot.page.BasePage) -> bool:
@@ -161,19 +175,21 @@ def find_photo_in_obs(
         if throttle:
             throttle.throttle()
 
-    # Hash check failed, use SSIM instead
-    logger.debug("Hash check failed, checking SSIM scores")
-    try:
-        orig = get_commons_image(page)
-    except Exception:
-        pass
-    else:
-        for photo in photos:
-            logger.debug(f"Current photo: {photo}")
-            if compare_ssim(orig, photo):
-                return photo, "ssim"
-            if throttle:
-                throttle.throttle()
+    if config["use_ssim"]:
+        # Hash check failed, use SSIM instead
+        logger.debug("Hash check failed, checking SSIM scores")
+        try:
+            orig = get_commons_image(page)
+        except Exception:
+            pass
+        else:
+            for photo in photos:
+                logger.debug(f"Current photo: {photo}")
+                res, ssim = compare_ssim(orig, photo)
+                if res:
+                    return photo, f"ssim: {ssim}"
+                if throttle:
+                    throttle.throttle()
 
     return None, "notmatching"
 
@@ -195,6 +211,7 @@ def compare_photo_hashes(page: pywikibot.FilePage, photo: iNaturalistID) -> bool
 
 
 def get_ina_image(photo: iNaturalistID, final: bool = False) -> bytes:
+    """Download original photo from iNaturalist"""
     if photo.url:
         extension = photo.url.rpartition("?")[0].rpartition(".")[2]
     else:
@@ -208,23 +225,30 @@ def get_ina_image(photo: iNaturalistID, final: bool = False) -> bytes:
 
 
 def get_commons_image(page: pywikibot.FilePage) -> Image.Image:
+    """Download orignal Commons file and open as a PIL image"""
     url = page.get_file_url()
     response = session.get(url)
     response.raise_for_status()
     return Image.open(BytesIO(response.content))
 
 
-def compare_ssim(orig: Image, photo: iNaturalistID, min_ssim: float = 0.9) -> bool:
+def compare_ssim(
+    orig: Image, photo: iNaturalistID, min_ssim: float = 0.0
+) -> Tuple[bool, float]:
+    """Compares an iNaturalist photo to the Commons file using an SSIM score"""
+    if not min_ssim:
+        min_ssim = config.get("min_ssim", 0.9)
+    assert min_ssim > 0 and min_ssim < 1
     try:
         image = utils.retry(get_ina_image, 3, photo=photo)
     except Exception as err:
         logger.exception(err)
-        return False
+        return False, 0.0
     ina_image = Image.open(BytesIO(image))
 
     ssim = pyssim.compute_ssim(orig, ina_image)
     logger.debug(f"SSIM value: {ssim}")
-    return ssim > min_ssim
+    return (ssim > min_ssim, ssim)
 
 
 def find_ina_license(ina_data: dict, photo: iNaturalistID) -> str:
@@ -236,16 +260,7 @@ def find_ina_license(ina_data: dict, photo: iNaturalistID) -> str:
     The API does not return CC version numbers, but the website has 4.0 links.
     CC 4.0 licenses are assumed.
     """
-    licenses = {
-        "cc0": "Cc-zero",
-        "cc-by": "Cc-by-4.0",
-        "cc-by-nc": "Cc-by-nc-4.0",
-        "cc-by-nd": "Cc-by-nd-4.0",
-        "cc-by-sa": "Cc-by-sa-4.0",
-        "cc-by-nc-nd": "Cc-by-nc-nd-4.0",
-        "cc-by-nc-sa": "Cc-by-nc-sa-4.0",
-        "null": "arr",
-    }
+    licenses = config["ina_licenses"]
     photos: list = ina_data.get("photos", [])
     for photo_data in photos:
         if str(photo_data.get("id")) == photo.id:
@@ -290,7 +305,7 @@ def check_licenses(ina_license: str, com_license: str) -> str:
         pass:       Licenses match
         pass-change: Commons license changed to free iNaturalist license
     """
-    free_licenses = {"Cc-zero", "Cc-by-4.0", "Cc-by-sa-4.0"}
+    free_licenses = set(config["free_licenses"])
 
     if not ina_license:
         # iNaturalist license wasn't found, call in the humans
@@ -313,6 +328,7 @@ def update_review(
     author: str = "",
     review_license: str = "",
     upload_license: str = "",
+    reason: str = "",
 ) -> bool:
     """Updates the wikitext with the review status"""
     code = mwph.parse(page.text)
@@ -322,6 +338,7 @@ def update_review(
         author=author,
         review_license=review_license,
         upload_license=upload_license,
+        reason=reason,
     )
 
     for pagetemplate in code.ifilter_templates(matches="iNaturalistreview"):
@@ -333,8 +350,9 @@ def update_review(
         if status == "fail":
             code.insert(
                 0,
-                "{{copyvio|Bot license review NOT PASSED: "
-                f"iNaturalist author is using {review_license}}}}}",
+                string.Template(config["fail_tag"]).safe_substitute(
+                    review_license=review_license
+                ),
             )
         break
     else:
@@ -350,37 +368,25 @@ def make_template(
     author: str = "",
     review_license: str = "",
     upload_license: str = "",
-) -> mwph.wikicode.Wikicode:
+    reason: str = "",
+) -> str:
     """Constructs the iNaturalistReview template"""
-    text = "{{iNaturalistReview }}"
-    code = mwph.parse(text)
-    template = code.get(0)
-    template.add("status", status + " ", preserve_spacing=False)
-    template.add("reviewdate", date.today().isoformat() + " ", preserve_spacing=False)
-    template.add("reviewer", username + " ", preserve_spacing=False)
-
-    if status != "error":
-        assert isinstance(photo_id, iNaturalistID)
-        code.insert(0, f"{{{{{review_license}}}}}")
-        template.add(
-            "author", author + " ", before="reviewdate", preserve_spacing=False
-        )
-        template.add(
-            "sourceurl",
-            f"https://www.inaturalist.org/photo/{photo_id.id} ",
-            before="reviewdate",
-            preserve_spacing=False,
-        )
-
-        if status == "pass-change":
-            template.add("reviewlicense", review_license + " ", preserve_spacing=False)
-            template.add(
-                "uploadlicense", upload_license, preserve_spacing=False,
-            )
-        else:
-            template.add("reviewlicense", review_license, preserve_spacing=False)
-
-    return code
+    template = string.Template(config[status])
+    text = template.safe_substitute(
+        status=status,
+        author=author,
+        source_url=str(photo_id),
+        review_date=date.today().isoformat(),
+        reviewer=username,
+        review_license=review_license,
+        upload_license=upload_license,
+        reason=reason,
+    )
+    if status in ("pass", "pass-change"):
+        text = ("{{%s}}" % review_license) + text
+    elif status == "fail":
+        text = ("{{%s}}" % upload_license) + text
+    return text
 
 
 def save_page(
@@ -391,7 +397,9 @@ def save_page(
     If the global simulate variable is true, the wikitext will be printed
     instead of saved to Commons.
     """
-    summary = f"License review: {status} {review_license} (inrbot {__version__}"
+    summary = string.Template(config["review_summary"]).safe_substitute(
+        status=status, review_license=review_license, version=__version__
+    )
     if not simulate:
         utils.check_runpage(site, run_override)
         logger.info(f"Saving {page.title()}")
@@ -430,7 +438,7 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
         return None
     elif wikitext_id.type != "observations":
         logger.info("Not a supported endpoint.")
-        update_review(page, status="error")
+        update_review(page, status="error", reason="photos")
         return False
 
     ina_throttle = utils.Throttle(10)
@@ -438,13 +446,13 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
 
     if not ina_data:
         logger.warning("No data retrieved from iNaturalist!")
-        update_review(page, status="error")
+        update_review(page, status="error", reason="nodata")
         return False
 
     photo_id, found = find_photo_in_obs(page, wikitext_id, ina_data, ina_throttle)
     if photo_id is None:
         logger.info(f"Images did not match: {found}")
-        update_review(page, status="error")
+        update_review(page, status="error", reason=found)
         return False
     else:
         assert isinstance(photo_id, iNaturalistID)
@@ -465,6 +473,7 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
         author=ina_author,
         review_license=ina_license,
         upload_license=com_license,
+        reason=found,
     )
     return True
 
@@ -515,6 +524,7 @@ def main(page: Optional[pywikibot.page.BasePage] = None, total: int = 0) -> None
                 time.sleep(300)
 
 
+config = get_config()
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Review files from iNaturalist on Commons",

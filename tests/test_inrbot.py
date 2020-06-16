@@ -235,7 +235,7 @@ def test_find_photo_in_obs_ssim_pass():
     with mock.patch("inrbot.compare_photo_hashes", return_value=False):
         photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
 
-    assert found == "ssim"
+    assert found.startswith("ssim")
     assert photo._replace(url="") == id_tuple(id="15087534", type="photos")
 
 
@@ -342,7 +342,7 @@ def test_update_review_section():
     page = mock.Mock()
     with open(test_data_dir + "/section.txt") as f:
         page.text = f.read()
-    photo_id = id_tuple(type="observations", id="11505950")
+    photo_id = id_tuple(type="photos", id="11505950")
 
     save_page = mock.Mock()
     with mock.patch("inrbot.save_page", save_page):
@@ -353,12 +353,13 @@ def test_update_review_section():
             author="Author",
             review_license="Cc-by-sa-4.0",
             upload_license="Cc-by-sa-4.0",
+            reason="sha1",
         )
     compare = (
         "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass |author=Author "
-        "|sourceurl=https://www.inaturalist.org/photo/11505950 "
+        "|sourceurl=https://www.inaturalist.org/photos/11505950 "
         f"|reviewdate={date.today().isoformat()} "
-        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0}}"
+        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
     )
     save_page.assert_called_once
     assert compare in save_page.call_args[0][1]
@@ -368,7 +369,7 @@ def test_update_review_section_fail():
     page = mock.Mock()
     with open(test_data_dir + "/section.txt") as f:
         page.text = f.read()
-    photo_id = id_tuple(type="observations", id="11505950")
+    photo_id = id_tuple(type="photos", id="11505950")
 
     save_page = mock.Mock()
     with mock.patch("inrbot.save_page", save_page):
@@ -377,14 +378,15 @@ def test_update_review_section_fail():
             photo_id,
             status="fail",
             author="Author",
-            review_license="Cc-by-sa-4.0",
+            review_license="Cc-by-nd-4.0",
             upload_license="Cc-by-sa-4.0",
+            reason="sha1",
         )
     compare = (
         "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=fail |author=Author "
-        "|sourceurl=https://www.inaturalist.org/photo/11505950 "
+        "|sourceurl=https://www.inaturalist.org/photos/11505950 "
         f"|reviewdate={date.today().isoformat()} "
-        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0}}"
+        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-nd-4.0 |reason=sha1}}"
     )
     save_page.assert_called_once
     assert compare in save_page.call_args[0][1]
@@ -398,13 +400,11 @@ def test_update_review_section_error():
 
     save_page = mock.Mock()
     with mock.patch("inrbot.save_page", save_page):
-        inrbot.update_review(
-            page, status="error",
-        )
+        inrbot.update_review(page, status="error", reason="nodata")
     compare = (
         "{{cc-by-sa-4.0}}{{iNaturalistReview |status=error "
         f"|reviewdate={date.today().isoformat()} "
-        "|reviewer=iNaturalistReviewBot }}"
+        "|reviewer=iNaturalistReviewBot |reason=nodata}}"
     )
     save_page.assert_called_once
     print(save_page.call_args[0][1])
@@ -415,7 +415,7 @@ def test_update_review_section_newline():
     page = mock.Mock()
     with open(test_data_dir + "/section_newline.txt") as f:
         page.text = f.read()
-    photo_id = id_tuple(type="observations", id="11505950")
+    photo_id = id_tuple(type="photos", id="11505950")
 
     save_page = mock.Mock()
     with mock.patch("inrbot.save_page", save_page):
@@ -426,12 +426,13 @@ def test_update_review_section_newline():
             author="Author",
             review_license="Cc-by-sa-4.0",
             upload_license="Cc-by-sa-4.0",
+            reason="sha1",
         )
     compare = (
         "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass |author=Author "
-        "|sourceurl=https://www.inaturalist.org/photo/11505950 "
+        "|sourceurl=https://www.inaturalist.org/photos/11505950 "
         f"|reviewdate={date.today().isoformat()} "
-        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0}}"
+        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
     )
     save_page.assert_called_once
     assert compare in save_page.call_args[0][1]
@@ -441,7 +442,7 @@ def test_update_review_section_change():
     page = mock.Mock()
     with open(test_data_dir + "/section_change.txt") as f:
         page.text = f.read()
-    photo_id = id_tuple(type="observations", id="11505950")
+    photo_id = id_tuple(type="photos", id="11505950")
 
     save_page = mock.Mock()
     with mock.patch("inrbot.save_page", save_page):
@@ -452,13 +453,14 @@ def test_update_review_section_change():
             author="Author",
             review_license="Cc-by-sa-4.0",
             upload_license="Cc-by-4.0",
+            reason="sha1",
         )
     compare = (
         "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass-change |author=Author "
-        "|sourceurl=https://www.inaturalist.org/photo/11505950 "
+        "|sourceurl=https://www.inaturalist.org/photos/11505950 "
         f"|reviewdate={date.today().isoformat()} "
         "|reviewer=iNaturalistReviewBot "
-        "|reviewlicense=Cc-by-sa-4.0 |uploadlicense=Cc-by-4.0}}"
+        "|reviewlicense=Cc-by-sa-4.0 |uploadlicense=Cc-by-4.0 |reason=sha1}}"
     )
     save_page.assert_called_once
     assert compare in save_page.call_args[0][1]
@@ -468,7 +470,7 @@ def test_update_review_para():
     page = mock.Mock()
     with open(test_data_dir + "/para.txt") as f:
         page.text = f.read()
-    photo_id = id_tuple(type="observations", id="11505950")
+    photo_id = id_tuple(type="photos", id="11505950")
 
     save_page = mock.Mock()
     with mock.patch("inrbot.save_page", save_page):
@@ -479,12 +481,13 @@ def test_update_review_para():
             author="Author",
             review_license="Cc-by-sa-4.0",
             upload_license="Cc-by-sa-4.0",
+            reason="sha1",
         )
     compare = (
         "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass |author=Author "
-        "|sourceurl=https://www.inaturalist.org/photo/11505950 "
+        "|sourceurl=https://www.inaturalist.org/photos/11505950 "
         f"|reviewdate={date.today().isoformat()} "
-        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0}}"
+        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
     )
     save_page.assert_called_once
     assert compare in save_page.call_args[0][1]
@@ -494,7 +497,7 @@ def test_update_review_para_change():
     page = mock.Mock()
     with open(test_data_dir + "/para_change.txt") as f:
         page.text = f.read()
-    photo_id = id_tuple(type="observations", id="11505950")
+    photo_id = id_tuple(type="photos", id="11505950")
 
     save_page = mock.Mock()
     with mock.patch("inrbot.save_page", save_page):
@@ -505,13 +508,14 @@ def test_update_review_para_change():
             author="Author",
             review_license="Cc-by-sa-4.0",
             upload_license="Cc-by-4.0",
+            reason="sha1",
         )
     compare = (
         "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass-change |author=Author "
-        "|sourceurl=https://www.inaturalist.org/photo/11505950 "
+        "|sourceurl=https://www.inaturalist.org/photos/11505950 "
         f"|reviewdate={date.today().isoformat()} "
         "|reviewer=iNaturalistReviewBot "
-        "|reviewlicense=Cc-by-sa-4.0 |uploadlicense=Cc-by-4.0}}"
+        "|reviewlicense=Cc-by-sa-4.0 |uploadlicense=Cc-by-4.0 |reason=sha1}}"
     )
     save_page.assert_called_once
     assert compare in save_page.call_args[0][1]
@@ -521,7 +525,7 @@ def test_update_review_free():
     page = mock.Mock()
     with open(test_data_dir + "/free.txt") as f:
         page.text = f.read()
-    photo_id = id_tuple(type="observations", id="11505950")
+    photo_id = id_tuple(type="photos", id="11505950")
 
     save_page = mock.Mock()
     with mock.patch("inrbot.save_page", save_page):
@@ -532,12 +536,13 @@ def test_update_review_free():
             author="Author",
             review_license="Cc-by-sa-4.0",
             upload_license="Cc-by-sa-4.0",
+            reason="sha1",
         )
     compare = (
         "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass |author=Author "
-        "|sourceurl=https://www.inaturalist.org/photo/11505950 "
+        "|sourceurl=https://www.inaturalist.org/photos/11505950 "
         f"|reviewdate={date.today().isoformat()} "
-        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0}}"
+        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
     )
     save_page.assert_called_once
     assert compare in save_page.call_args[0][1]
@@ -547,7 +552,7 @@ def test_update_review_free_change():
     page = mock.Mock()
     with open(test_data_dir + "/free_change.txt") as f:
         page.text = f.read()
-    photo_id = id_tuple(type="observations", id="11505950")
+    photo_id = id_tuple(type="photos", id="11505950")
 
     save_page = mock.Mock()
     with mock.patch("inrbot.save_page", save_page):
@@ -558,12 +563,13 @@ def test_update_review_free_change():
             author="Author",
             review_license="Cc-by-sa-4.0",
             upload_license="Cc-by-sa-4.0",
+            reason="sha1",
         )
     compare = (
         "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass |author=Author "
-        "|sourceurl=https://www.inaturalist.org/photo/11505950 "
+        "|sourceurl=https://www.inaturalist.org/photos/11505950 "
         f"|reviewdate={date.today().isoformat()} "
-        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0}}"
+        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
     )
     save_page.assert_called_once
     assert compare in save_page.call_args[0][1]
@@ -572,7 +578,7 @@ def test_update_review_free_change():
 def test_update_review_broken():
     page = mock.Mock()
     page.text = "Foo"
-    photo_id = id_tuple(type="observations", id="11505950")
+    photo_id = id_tuple(type="photos", id="11505950")
     result = inrbot.update_review(
         page,
         photo_id,
@@ -580,43 +586,46 @@ def test_update_review_broken():
         author="Author",
         review_license="Cc-by-sa-4.0",
         upload_license="Cc-by-sa-4.0",
+        reason="sha1",
     )
     assert result is False
 
 
 def test_make_template():
-    photo_id = id_tuple(type="observations", id="11505950")
+    photo_id = id_tuple(type="photos", id="11505950")
     template = inrbot.make_template(
         photo_id,
         status="pass",
         author="Author",
         review_license="Cc-by-sa-4.0",
         upload_license="Cc-by-sa-4.0",
+        reason="sha1",
     )
     compare = (
         "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass |author=Author "
-        "|sourceurl=https://www.inaturalist.org/photo/11505950 "
+        "|sourceurl=https://www.inaturalist.org/photos/11505950 "
         f"|reviewdate={date.today().isoformat()} "
-        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0}}"
+        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
     )
     assert str(template) == compare
 
 
 def test_make_template_change():
-    photo_id = id_tuple(type="observations", id="11505950")
+    photo_id = id_tuple(type="photos", id="11505950")
     template = inrbot.make_template(
         photo_id,
         status="pass-change",
         author="Author",
         review_license="Cc-by-sa-4.0",
         upload_license="Cc-by-4.0",
+        reason="sha1",
     )
     compare = (
         "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass-change |author=Author "
-        "|sourceurl=https://www.inaturalist.org/photo/11505950 "
+        "|sourceurl=https://www.inaturalist.org/photos/11505950 "
         f"|reviewdate={date.today().isoformat()} "
         "|reviewer=iNaturalistReviewBot "
-        "|reviewlicense=Cc-by-sa-4.0 |uploadlicense=Cc-by-4.0}}"
+        "|reviewlicense=Cc-by-sa-4.0 |uploadlicense=Cc-by-4.0 |reason=sha1}}"
     )
     assert str(template) == compare
 
