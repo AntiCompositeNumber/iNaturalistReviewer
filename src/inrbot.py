@@ -322,6 +322,8 @@ def check_licenses(ina_license: str, com_license: str) -> str:
 
 
 class Aliases:
+    alias_cache = {}
+
     def __init__(self, title: str) -> None:
         self.title: str = title
         self._aliases: Optional[Set[str]] = None
@@ -330,15 +332,27 @@ class Aliases:
         canon_page = pywikibot.Page(site, f"Template:{self.title}")
         aliases = {
             page.title(with_ns=False).lower()
-            for page in canon_page.backlinks(filter_redirects=True)
+            for page in canon_page.backlinks(filter_redirects=True, namespaces=10)
         }
         aliases.add(canon_page.title(with_ns=False).lower())
+        aliases.update(
+            page.title(with_ns=False).lower().partition("/")[0]
+            for page in canon_page.embeddedin(namespaces=10)
+        )
         self._aliases = aliases
 
     @property
     def aliases(self):
         if self._aliases is None:
-            self.get_aliases()
+            cached = self.alias_cache.get(self.title)
+            if cached is None or time.monotonic() - cached["last_update"] > 3600:
+                self.get_aliases()
+                self.alias_cache[self.title] = {
+                    "last_update": time.monotonic(),
+                    "aliases": self._aliases,
+                }
+            else:
+                self._aliases = cached["aliases"]
         return self._aliases
 
     def is_license(self, template: mwph.nodes.Template) -> bool:
