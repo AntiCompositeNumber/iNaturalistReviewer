@@ -502,12 +502,11 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
         page = pywikibot.FilePage(inpage)
     except ValueError:
         return None
+    logger.info(f"Checking {page.title()}")
 
     utils.check_runpage(site, run_override)
     if not check_can_run(page):
         return None
-
-    logger.info(f"Checking {page.title()}")
 
     wikitext_id = find_ina_id(page)
     logger.info(f"ID found in wikitext: {wikitext_id}")
@@ -568,6 +567,7 @@ def main(page: Optional[pywikibot.page.BasePage] = None, total: int = 0) -> None
         # Otherwise, run automatically
         # If total is 0, run continuously.
         # If total is non-zero, check that many files
+        logger.info("Beginning loop")
         i = 0
         running = True
         while (not total) or (i < total):
