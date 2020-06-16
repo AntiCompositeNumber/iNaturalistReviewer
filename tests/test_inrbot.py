@@ -618,6 +618,12 @@ def test_save_page_sim():
     page.save.assert_not_called()
 
 
+def test_get_author_talk():
+    page = pywikibot.FilePage(inrbot.site, "File:17slemdal efn.jpg")
+    user_talk = pywikibot.Page(inrbot.site, "User talk:Espen Franck-Nielsen")
+    assert inrbot.get_author_talk(page) == user_talk
+
+
 def test_main_auto_total():
     review_file = mock.MagicMock()
     sleep = mock.MagicMock()

@@ -428,6 +428,37 @@ def save_page(
         logger.info(new_text)
 
 
+def get_author_talk(page: pywikibot.page.FilePage) -> pywikibot.page.Page:
+    return pywikibot.Page(site, f"User talk:{page.oldest_file_info.user}")
+
+
+def fail_warning(page: pywikibot.page.BasePage, review_license: str) -> None:
+    user_talk = get_author_talk(page)
+    message = string.Template(config["fail_warn"]).safe_substitute(
+        filename=page.title(with_ns=True), review_license=review_license
+    )
+    summary = string.Template(config["review_summary"]).safe_substitute(
+        status="fail", review_license=review_license, version=__version__
+    )
+    if not simulate:
+        utils.check_runpage(site, run_override)
+        logger.info(f"Saving {page.title()}")
+        utils.retry(
+            utils.save_page,
+            3,
+            text=message,
+            page=user_talk,
+            summary=summary,
+            bot=False,
+            minor=False,
+            mode="append",
+        )
+    else:
+        logger.info("Saving disabled")
+        logger.info(summary)
+        logger.info(message)
+
+
 def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
     """Performs a license review on the input page
 
@@ -482,7 +513,7 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
     logger.debug(f"Commons License: {com_license}")
     status = check_licenses(ina_license, com_license)
     logger.debug(f"Status: {status}")
-    update_review(
+    reviewed = update_review(
         page,
         photo_id,
         status=status,
@@ -491,7 +522,10 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
         upload_license=com_license,
         reason=found,
     )
-    return True
+    if status == "fail" and reviewed:
+        fail_warning(page, ina_license)
+
+    return reviewed
 
 
 def main(page: Optional[pywikibot.page.BasePage] = None, total: int = 0) -> None:
