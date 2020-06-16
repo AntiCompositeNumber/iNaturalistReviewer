@@ -498,6 +498,23 @@ def test_check_licenses_error():
             ),
         ),
         (
+            test_data_dir + "/self_change.txt",
+            dict(
+                status="pass-change",
+                author="Author",
+                review_license="Cc-by-sa-4.0",
+                upload_license="Cc-by-4.0",
+                reason="sha1",
+            ),
+            (
+                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass-change "
+                "|author=Author |sourceurl=https://www.inaturalist.org/photos/11505950 "
+                f"|reviewdate={date.today().isoformat()} "
+                "|reviewer=iNaturalistReviewBot "
+                "|reviewlicense=Cc-by-sa-4.0 |uploadlicense=Cc-by-4.0 |reason=sha1}}"
+            ),
+        ),
+        (
             test_data_dir + "/both_change.txt",
             dict(
                 status="pass-change",

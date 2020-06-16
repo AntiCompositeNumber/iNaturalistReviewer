@@ -321,6 +321,34 @@ def check_licenses(ina_license: str, com_license: str) -> str:
         return "pass-change"
 
 
+class Aliases:
+    def __init__(self, title: str) -> None:
+        self.title: str = title
+        self._aliases: Optional[Set[str]] = None
+
+    def get_aliases(self) -> None:
+        canon_page = pywikibot.Page(site, f"Template:{self.title}")
+        aliases = {
+            page.title(with_ns=False).lower()
+            for page in canon_page.backlinks(filter_redirects=True)
+        }
+        aliases.add(canon_page.title(with_ns=False).lower())
+        self._aliases = aliases
+
+    @property
+    def aliases(self):
+        if self._aliases is None:
+            self.get_aliases()
+        return self._aliases
+
+    def is_license(self, template: mwph.nodes.Template) -> bool:
+        if template.name.lower() in self.aliases:
+            return True
+        elif template.name.lower() == "self":
+            return True
+        return False
+
+
 def update_review(
     page: pywikibot.page.BasePage,
     photo_id: Optional[iNaturalistID] = None,
@@ -344,10 +372,8 @@ def update_review(
         if str(review_template.name).lower() == "inaturalistreview":
             code.replace(review_template, template)
     if status == "pass-change":
-        aliases = get_aliases(upload_license)
-        for pt2 in code.ifilter_templates(
-            matches=lambda t: (t.name).lower() in aliases
-        ):
+        aliases = Aliases(upload_license)
+        for pt2 in code.ifilter_templates(matches=aliases.is_license):
             code.replace(pt2, ("{{%s}}" % review_license))
     if status == "fail":
         code.insert(
@@ -364,16 +390,6 @@ def update_review(
         return False
     else:
         return True
-
-
-def get_aliases(title: str) -> Set[str]:
-    canon_page = pywikibot.Page(site, f"Template:{title}")
-    aliases = {
-        page.title(with_ns=False).lower()
-        for page in canon_page.backlinks(filter_redirects=True)
-    }
-    aliases.add(canon_page.title(with_ns=False).lower())
-    return aliases
 
 
 def make_template(
