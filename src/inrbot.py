@@ -88,7 +88,10 @@ def check_can_run(page: pywikibot.page.BasePage) -> bool:
         (page.title() in skip)
         or (not page.has_permission("edit"))
         or (not page.botMayEdit())
-        or ("{{iNaturalistreview}}" not in page.text)
+        or (
+            pywikibot.Page(site, "Template:iNaturalistreview")
+            not in set(page.itertemplates())
+        )
     ):
         return False
     else:
@@ -382,9 +385,10 @@ def update_review(
         upload_license=upload_license,
         reason=reason,
     )
-    for review_template in code.ifilter_templates(matches="iNaturalistreview"):
-        if str(review_template.name).lower() == "inaturalistreview":
-            code.replace(review_template, template)
+    for review_template in code.ifilter_templates(
+        matches=lambda t: t.name.lower() == "inaturalistreview"
+    ):
+        code.replace(review_template, template)
     if status == "pass-change":
         aliases = Aliases(upload_license)
         for pt2 in code.ifilter_templates(matches=aliases.is_license):
