@@ -9,4 +9,7 @@
 }}
 
 
+=={{int:license-header}}==
+{{cc-by-4.0}}
+
 [[Category:Catgory]]

@@ -340,26 +340,40 @@ def update_review(
         upload_license=upload_license,
         reason=reason,
     )
+    for review_template in code.ifilter_templates(matches="iNaturalistreview"):
+        if str(review_template.name).lower() == "inaturalistreview":
+            code.replace(review_template, template)
+    if status == "pass-change":
+        aliases = get_aliases(upload_license)
+        for pt2 in code.ifilter_templates(
+            matches=lambda t: (t.name).lower() in aliases
+        ):
+            code.replace(pt2, ("{{%s}}" % review_license))
+    if status == "fail":
+        code.insert(
+            0,
+            string.Template(config["fail_tag"]).safe_substitute(
+                review_license=review_license
+            ),
+        )
 
-    for pagetemplate in code.ifilter_templates(matches="iNaturalistreview"):
-        for pt2 in code.ifilter_templates(matches=upload_license):
-            # Remove existing license template
-            if pt2.name.matches(upload_license):
-                code.remove(pt2)
-        code.replace(pagetemplate, template)
-        if status == "fail":
-            code.insert(
-                0,
-                string.Template(config["fail_tag"]).safe_substitute(
-                    review_license=review_license
-                ),
-            )
-        break
-    else:
+    try:
+        save_page(page, str(code), status, review_license)
+    except Exception as err:
+        logging.exception(err)
         return False
+    else:
+        return True
 
-    save_page(page, str(code), status, review_license)
-    return True
+
+def get_aliases(title: str) -> Set[str]:
+    canon_page = pywikibot.Page(site, f"Template:{title}")
+    aliases = {
+        page.title(with_ns=False).lower()
+        for page in canon_page.backlinks(filter_redirects=True)
+    }
+    aliases.add(canon_page.title(with_ns=False).lower())
+    return aliases
 
 
 def make_template(
@@ -382,10 +396,6 @@ def make_template(
         upload_license=upload_license,
         reason=reason,
     )
-    if status in ("pass", "pass-change"):
-        text = ("{{%s}}" % review_license) + text
-    elif status == "fail":
-        text = ("{{%s}}" % upload_license) + text
     return text
 
 
@@ -403,8 +413,14 @@ def save_page(
     if not simulate:
         utils.check_runpage(site, run_override)
         logger.info(f"Saving {page.title()}")
-        utils.save_page(
-            text=new_text, page=page, summary=summary, bot=False, minor=False
+        utils.retry(
+            utils.save_page,
+            3,
+            text=new_text,
+            page=page,
+            summary=summary,
+            bot=False,
+            minor=False,
         )
     else:
         logger.info("Saving disabled")
