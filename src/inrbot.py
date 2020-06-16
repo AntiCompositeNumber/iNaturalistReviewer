@@ -22,6 +22,7 @@ import hashlib
 import json
 import logging
 import logging.config
+import re
 import string
 import time
 import urllib.parse
@@ -88,10 +89,7 @@ def check_can_run(page: pywikibot.page.BasePage) -> bool:
         (page.title() in skip)
         or (not page.has_permission("edit"))
         or (not page.botMayEdit())
-        or (
-            pywikibot.Page(site, "Template:iNaturalistreview")
-            not in set(page.itertemplates())
-        )
+        or (not re.search("{{[iI][nN]aturalistreview}}", page.text))
     ):
         return False
     else:
