@@ -338,241 +338,183 @@ def test_check_licenses_error():
     assert result == "error"
 
 
-def test_update_review_section():
+@pytest.mark.parametrize(
+    "filename,kwargs,compare",
+    [
+        (
+            test_data_dir + "/section.txt",
+            dict(
+                status="pass",
+                author="Author",
+                review_license="Cc-by-sa-4.0",
+                upload_license="Cc-by-sa-4.0",
+                reason="sha1",
+            ),
+            (
+                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass |author=Author "
+                "|sourceurl=https://www.inaturalist.org/photos/11505950 "
+                f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
+                " |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
+            ),
+        ),
+        (
+            test_data_dir + "/section.txt",
+            dict(
+                status="pass",
+                author="Author",
+                review_license="Cc-by-sa-4.0",
+                upload_license="Cc-by-sa-4.0",
+                reason="sha1",
+            ),
+            (
+                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass |author=Author "
+                "|sourceurl=https://www.inaturalist.org/photos/11505950 "
+                f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
+                " |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
+            ),
+        ),
+        (
+            test_data_dir + "/section.txt",
+            dict(
+                status="fail",
+                author="Author",
+                review_license="Cc-by-nd-4.0",
+                upload_license="Cc-by-sa-4.0",
+                reason="sha1",
+            ),
+            (
+                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=fail |author=Author "
+                "|sourceurl=https://www.inaturalist.org/photos/11505950 "
+                f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
+                " |reviewlicense=Cc-by-nd-4.0 |reason=sha1}}"
+            ),
+        ),
+        (
+            test_data_dir + "/section.txt",
+            dict(status="error", reason="nodata", photo_id=None),
+            (
+                "{{cc-by-sa-4.0}}{{iNaturalistReview |status=error "
+                f"|reviewdate={date.today().isoformat()} "
+                "|reviewer=iNaturalistReviewBot |reason=nodata}}"
+            ),
+        ),
+        (
+            test_data_dir + "/section_newline.txt",
+            dict(
+                status="pass",
+                author="Author",
+                review_license="Cc-by-sa-4.0",
+                upload_license="Cc-by-sa-4.0",
+                reason="sha1",
+            ),
+            (
+                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass |author=Author "
+                "|sourceurl=https://www.inaturalist.org/photos/11505950 "
+                f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
+                " |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
+            ),
+        ),
+        (
+            test_data_dir + "/section_change.txt",
+            dict(
+                status="pass-change",
+                author="Author",
+                review_license="Cc-by-sa-4.0",
+                upload_license="Cc-by-4.0",
+                reason="sha1",
+            ),
+            (
+                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass-change |author=Author"
+                " |sourceurl=https://www.inaturalist.org/photos/11505950 "
+                f"|reviewdate={date.today().isoformat()} "
+                "|reviewer=iNaturalistReviewBot "
+                "|reviewlicense=Cc-by-sa-4.0 |uploadlicense=Cc-by-4.0 |reason=sha1}}"
+            ),
+        ),
+        (
+            test_data_dir + "/para.txt",
+            dict(
+                status="pass",
+                author="Author",
+                review_license="Cc-by-sa-4.0",
+                upload_license="Cc-by-sa-4.0",
+                reason="sha1",
+            ),
+            (
+                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass |author=Author "
+                "|sourceurl=https://www.inaturalist.org/photos/11505950 "
+                f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
+                " |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
+            ),
+        ),
+        (
+            test_data_dir + "/para_change.txt",
+            dict(
+                status="pass-change",
+                author="Author",
+                review_license="Cc-by-sa-4.0",
+                upload_license="Cc-by-4.0",
+                reason="sha1",
+            ),
+            (
+                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass-change "
+                "|author=Author "
+                "|sourceurl=https://www.inaturalist.org/photos/11505950 "
+                f"|reviewdate={date.today().isoformat()} "
+                "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0 "
+                "|uploadlicense=Cc-by-4.0 |reason=sha1}}"
+            ),
+        ),
+        (
+            test_data_dir + "/free.txt",
+            dict(
+                status="pass",
+                author="Author",
+                review_license="Cc-by-sa-4.0",
+                upload_license="Cc-by-sa-4.0",
+                reason="sha1",
+            ),
+            (
+                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass |author=Author "
+                "|sourceurl=https://www.inaturalist.org/photos/11505950 "
+                f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
+                " |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
+            ),
+        ),
+        (
+            test_data_dir + "/free_change.txt",
+            dict(
+                status="pass",
+                author="Author",
+                review_license="Cc-by-sa-4.0",
+                upload_license="Cc-by-sa-4.0",
+                reason="sha1",
+            ),
+            (
+                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass |author=Author "
+                "|sourceurl=https://www.inaturalist.org/photos/11505950 "
+                f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
+                " |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
+            ),
+        ),
+    ],
+)
+def test_update_review(filename, kwargs, compare):
     page = mock.Mock()
-    with open(test_data_dir + "/section.txt") as f:
+    with open(filename) as f:
         page.text = f.read()
     photo_id = id_tuple(type="photos", id="11505950")
+    if kwargs.get("photo_id", "") is not None:
+        kwargs["photo_id"] = photo_id
 
     save_page = mock.Mock()
     with mock.patch("inrbot.save_page", save_page):
-        inrbot.update_review(
-            page,
-            photo_id,
-            status="pass",
-            author="Author",
-            review_license="Cc-by-sa-4.0",
-            upload_license="Cc-by-sa-4.0",
-            reason="sha1",
-        )
-    compare = (
-        "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass |author=Author "
-        "|sourceurl=https://www.inaturalist.org/photos/11505950 "
-        f"|reviewdate={date.today().isoformat()} "
-        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
-    )
+        inrbot.update_review(page, **kwargs)
+
     save_page.assert_called_once
     assert compare in save_page.call_args[0][1]
-
-
-def test_update_review_section_fail():
-    page = mock.Mock()
-    with open(test_data_dir + "/section.txt") as f:
-        page.text = f.read()
-    photo_id = id_tuple(type="photos", id="11505950")
-
-    save_page = mock.Mock()
-    with mock.patch("inrbot.save_page", save_page):
-        inrbot.update_review(
-            page,
-            photo_id,
-            status="fail",
-            author="Author",
-            review_license="Cc-by-nd-4.0",
-            upload_license="Cc-by-sa-4.0",
-            reason="sha1",
-        )
-    compare = (
-        "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=fail |author=Author "
-        "|sourceurl=https://www.inaturalist.org/photos/11505950 "
-        f"|reviewdate={date.today().isoformat()} "
-        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-nd-4.0 |reason=sha1}}"
-    )
-    save_page.assert_called_once
-    assert compare in save_page.call_args[0][1]
-    assert "{{copyvio" in save_page.call_args[0][1]
-
-
-def test_update_review_section_error():
-    page = mock.Mock()
-    with open(test_data_dir + "/section.txt") as f:
-        page.text = f.read()
-
-    save_page = mock.Mock()
-    with mock.patch("inrbot.save_page", save_page):
-        inrbot.update_review(page, status="error", reason="nodata")
-    compare = (
-        "{{cc-by-sa-4.0}}{{iNaturalistReview |status=error "
-        f"|reviewdate={date.today().isoformat()} "
-        "|reviewer=iNaturalistReviewBot |reason=nodata}}"
-    )
-    save_page.assert_called_once
-    print(save_page.call_args[0][1])
-    assert compare in save_page.call_args[0][1]
-
-
-def test_update_review_section_newline():
-    page = mock.Mock()
-    with open(test_data_dir + "/section_newline.txt") as f:
-        page.text = f.read()
-    photo_id = id_tuple(type="photos", id="11505950")
-
-    save_page = mock.Mock()
-    with mock.patch("inrbot.save_page", save_page):
-        inrbot.update_review(
-            page,
-            photo_id,
-            status="pass",
-            author="Author",
-            review_license="Cc-by-sa-4.0",
-            upload_license="Cc-by-sa-4.0",
-            reason="sha1",
-        )
-    compare = (
-        "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass |author=Author "
-        "|sourceurl=https://www.inaturalist.org/photos/11505950 "
-        f"|reviewdate={date.today().isoformat()} "
-        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
-    )
-    save_page.assert_called_once
-    assert compare in save_page.call_args[0][1]
-
-
-def test_update_review_section_change():
-    page = mock.Mock()
-    with open(test_data_dir + "/section_change.txt") as f:
-        page.text = f.read()
-    photo_id = id_tuple(type="photos", id="11505950")
-
-    save_page = mock.Mock()
-    with mock.patch("inrbot.save_page", save_page):
-        inrbot.update_review(
-            page,
-            photo_id,
-            status="pass-change",
-            author="Author",
-            review_license="Cc-by-sa-4.0",
-            upload_license="Cc-by-4.0",
-            reason="sha1",
-        )
-    compare = (
-        "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass-change |author=Author "
-        "|sourceurl=https://www.inaturalist.org/photos/11505950 "
-        f"|reviewdate={date.today().isoformat()} "
-        "|reviewer=iNaturalistReviewBot "
-        "|reviewlicense=Cc-by-sa-4.0 |uploadlicense=Cc-by-4.0 |reason=sha1}}"
-    )
-    save_page.assert_called_once
-    assert compare in save_page.call_args[0][1]
-
-
-def test_update_review_para():
-    page = mock.Mock()
-    with open(test_data_dir + "/para.txt") as f:
-        page.text = f.read()
-    photo_id = id_tuple(type="photos", id="11505950")
-
-    save_page = mock.Mock()
-    with mock.patch("inrbot.save_page", save_page):
-        inrbot.update_review(
-            page,
-            photo_id,
-            status="pass",
-            author="Author",
-            review_license="Cc-by-sa-4.0",
-            upload_license="Cc-by-sa-4.0",
-            reason="sha1",
-        )
-    compare = (
-        "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass |author=Author "
-        "|sourceurl=https://www.inaturalist.org/photos/11505950 "
-        f"|reviewdate={date.today().isoformat()} "
-        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
-    )
-    save_page.assert_called_once
-    assert compare in save_page.call_args[0][1]
-
-
-def test_update_review_para_change():
-    page = mock.Mock()
-    with open(test_data_dir + "/para_change.txt") as f:
-        page.text = f.read()
-    photo_id = id_tuple(type="photos", id="11505950")
-
-    save_page = mock.Mock()
-    with mock.patch("inrbot.save_page", save_page):
-        inrbot.update_review(
-            page,
-            photo_id,
-            status="pass-change",
-            author="Author",
-            review_license="Cc-by-sa-4.0",
-            upload_license="Cc-by-4.0",
-            reason="sha1",
-        )
-    compare = (
-        "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass-change |author=Author "
-        "|sourceurl=https://www.inaturalist.org/photos/11505950 "
-        f"|reviewdate={date.today().isoformat()} "
-        "|reviewer=iNaturalistReviewBot "
-        "|reviewlicense=Cc-by-sa-4.0 |uploadlicense=Cc-by-4.0 |reason=sha1}}"
-    )
-    save_page.assert_called_once
-    assert compare in save_page.call_args[0][1]
-
-
-def test_update_review_free():
-    page = mock.Mock()
-    with open(test_data_dir + "/free.txt") as f:
-        page.text = f.read()
-    photo_id = id_tuple(type="photos", id="11505950")
-
-    save_page = mock.Mock()
-    with mock.patch("inrbot.save_page", save_page):
-        inrbot.update_review(
-            page,
-            photo_id,
-            status="pass",
-            author="Author",
-            review_license="Cc-by-sa-4.0",
-            upload_license="Cc-by-sa-4.0",
-            reason="sha1",
-        )
-    compare = (
-        "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass |author=Author "
-        "|sourceurl=https://www.inaturalist.org/photos/11505950 "
-        f"|reviewdate={date.today().isoformat()} "
-        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
-    )
-    save_page.assert_called_once
-    assert compare in save_page.call_args[0][1]
-
-
-def test_update_review_free_change():
-    page = mock.Mock()
-    with open(test_data_dir + "/free_change.txt") as f:
-        page.text = f.read()
-    photo_id = id_tuple(type="photos", id="11505950")
-
-    save_page = mock.Mock()
-    with mock.patch("inrbot.save_page", save_page):
-        inrbot.update_review(
-            page,
-            photo_id,
-            status="pass",
-            author="Author",
-            review_license="Cc-by-sa-4.0",
-            upload_license="Cc-by-sa-4.0",
-            reason="sha1",
-        )
-    compare = (
-        "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass |author=Author "
-        "|sourceurl=https://www.inaturalist.org/photos/11505950 "
-        f"|reviewdate={date.today().isoformat()} "
-        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
-    )
-    save_page.assert_called_once
-    assert compare in save_page.call_args[0][1]
+    if kwargs.get("status", "") == "fail":
+        assert "{{copyvio" in save_page.call_args[0][1]
 
 
 def test_update_review_broken():
