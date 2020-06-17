@@ -515,15 +515,16 @@ def fail_warning(page: pywikibot.page.BasePage, review_license: str) -> None:
         logger.info(message)
 
 
-def get_observation_from_photo(photo_id: iNaturalistID) -> iNaturalistID:
+def get_observation_from_photo(photo_id: iNaturalistID) -> Optional[iNaturalistID]:
     assert photo_id.type == "photos"
     res = session.get(str(photo_id))
     res.raise_for_status()
-    matches = set(re.finditer(r"/observations/\d*\"", res.text))
-    if not matches:
+    # Yes, I know I'm parsing HTML with a regex.
+    match = re.search(r"/observations/(\d*)\"", res.text)
+    if not match:
         return None
     else:
-        return iNaturalistID(type="photos", id=matches.pop())
+        return iNaturalistID(type="observations", id=match.group(1))
 
 
 def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
@@ -557,6 +558,7 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
     if not raw_obs_id:
         logger.info("No observation ID could be found")
         update_review(page, status="error", reason="url")
+        return False
 
     ina_throttle = utils.Throttle(10)
     ina_data = get_ina_data(raw_obs_id, ina_throttle)

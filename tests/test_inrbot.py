@@ -695,6 +695,13 @@ def test_get_author_talk():
     assert inrbot.get_author_talk(page) == user_talk
 
 
+@pytest.mark.ext_web
+def test_get_observation_from_photo():
+    photo_id = id_tuple(type="photos", id="58596679")
+    obs_id = id_tuple(type="observations", id="36885889")
+    assert inrbot.get_observation_from_photo(photo_id) == obs_id
+
+
 def test_main_auto_total():
     review_file = mock.MagicMock()
     sleep = mock.MagicMock()
