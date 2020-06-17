@@ -41,7 +41,7 @@ from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
 import utils
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(
@@ -71,6 +71,12 @@ class iNaturalistID(NamedTuple):
 
     def __str__(self):
         return f"https://www.inaturalist.org/{self.type}/{self.id}"
+
+    def __eq__(self, other):
+        if isinstance(other, iNaturalistID):
+            return self.id == other.id and self.type == other.type
+        else:
+            return NotImplemented
 
 
 def get_config():
@@ -103,16 +109,29 @@ def files_to_check() -> pywikibot.page.BasePage:
         yield page
 
 
-def find_ina_id(page: pywikibot.page.BasePage) -> Optional[iNaturalistID]:
+def find_ina_id(
+    page: pywikibot.page.BasePage,
+) -> Tuple[Optional[iNaturalistID], Optional[iNaturalistID]]:
     """Returns an iNaturalistID tuple from wikitext"""
+    photos = set()
+    observations = set()
     for url in page.extlinks():
         url_id = parse_ina_url(url)
         if url_id is None:
             continue
         elif url_id.type == "observations":
-            return url_id
+            observations.add(url_id)
+        elif url_id.type == "photos":
+            photos.add(url_id)
+
+    if photos and observations:
+        return observations.pop(), photos.pop()
+    elif observations:
+        return observations.pop(), None
+    elif photos:
+        return None, photos.pop()
     else:
-        return None
+        return None, None
 
 
 def parse_ina_url(raw_url: str) -> Optional[iNaturalistID]:
@@ -155,6 +174,7 @@ def find_photo_in_obs(
     page: pywikibot.FilePage,
     obs_id: iNaturalistID,
     ina_data: dict,
+    raw_photo_id: Optional[iNaturalistID] = None,
     throttle: Optional[utils.Throttle] = None,
 ) -> Tuple[Optional[iNaturalistID], str]:
     """Find the matching image in an iNaturalist observation
@@ -167,6 +187,10 @@ def find_photo_in_obs(
     ]
     if len(photos) < 1:
         return None, "notfound"
+    if raw_photo_id and raw_photo_id not in photos:
+        raw_photo_id = None
+    elif raw_photo_id:
+        photos = [photo_id for photo_id in photos if photo_id == raw_photo_id]
 
     logger.debug("Checking sha1 hashes")
     for photo in photos:
@@ -491,6 +515,17 @@ def fail_warning(page: pywikibot.page.BasePage, review_license: str) -> None:
         logger.info(message)
 
 
+def get_observation_from_photo(photo_id: iNaturalistID) -> iNaturalistID:
+    assert photo_id.type == "photos"
+    res = session.get(str(photo_id))
+    res.raise_for_status()
+    matches = set(re.finditer(r"/observations/\d*\"", res.text))
+    if not matches:
+        return None
+    else:
+        return iNaturalistID(type="photos", id=matches.pop())
+
+
 def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
     """Performs a license review on the input page
 
@@ -510,24 +545,30 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
     if not check_can_run(page):
         return None
 
-    wikitext_id = find_ina_id(page)
-    logger.info(f"ID found in wikitext: {wikitext_id}")
-    if wikitext_id is None:
+    raw_obs_id, raw_photo_id = find_ina_id(page)
+    logger.info(f"ID found in wikitext: {raw_obs_id} {raw_photo_id}")
+    if raw_obs_id is None and raw_photo_id is None:
         return None
-    elif wikitext_id.type != "observations":
-        logger.info("Not a supported endpoint.")
-        update_review(page, status="error", reason="photos")
-        return False
+    elif raw_obs_id and not raw_photo_id:
+        pass
+    elif raw_photo_id and not raw_obs_id:
+        raw_obs_id = get_observation_from_photo(raw_photo_id)
+
+    if not raw_obs_id:
+        logger.info("No observation ID could be found")
+        update_review(page, status="error", reason="url")
 
     ina_throttle = utils.Throttle(10)
-    ina_data = get_ina_data(wikitext_id, ina_throttle)
+    ina_data = get_ina_data(raw_obs_id, ina_throttle)
 
     if not ina_data:
         logger.warning("No data retrieved from iNaturalist!")
         update_review(page, status="error", reason="nodata")
         return False
 
-    photo_id, found = find_photo_in_obs(page, wikitext_id, ina_data, ina_throttle)
+    photo_id, found = find_photo_in_obs(
+        page, raw_obs_id, ina_data, raw_photo_id, ina_throttle
+    )
     if photo_id is None:
         logger.info(f"Images did not match: {found}")
         update_review(page, status="error", reason=found)
@@ -572,6 +613,7 @@ def main(page: Optional[pywikibot.page.BasePage] = None, total: int = 0) -> None
         logger.info("Beginning loop")
         i = 0
         running = True
+        throttle = utils.Throttle(15)
         while (not total) or (i < total):
             for page in files_to_check():
                 if total and i >= total:
@@ -595,7 +637,7 @@ def main(page: Optional[pywikibot.page.BasePage] = None, total: int = 0) -> None
                         logger.exception(err)
                         raise
 
-                time.sleep(60)
+                throttle.throttle()
                 running = True
             else:
                 # If the for loop drops out, there are no more pages right now

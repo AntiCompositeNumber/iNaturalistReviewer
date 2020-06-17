@@ -129,7 +129,7 @@ def test_find_ina_id():
     page.extlinks.return_value = extlinks
     ina_id = inrbot.find_ina_id(page)
     compare = id_tuple(id="15059501", type="observations")
-    assert ina_id == compare
+    assert ina_id[0] == compare
 
 
 def test_find_ina_id_none():
@@ -139,7 +139,7 @@ def test_find_ina_id_none():
     ]
     page.extlinks.return_value = extlinks
     ina_id = inrbot.find_ina_id(page)
-    assert ina_id is None
+    assert ina_id == (None, None)
 
 
 def test_find_ina_id_nourls():
@@ -147,7 +147,7 @@ def test_find_ina_id_nourls():
     extlinks = []
     page.extlinks.return_value = extlinks
     ina_id = inrbot.find_ina_id(page)
-    assert ina_id is None
+    assert ina_id == (None, None)
 
 
 def test_find_ina_id_multiple():
@@ -158,8 +158,21 @@ def test_find_ina_id_multiple():
     ]
     page.extlinks.return_value = extlinks
     ina_id = inrbot.find_ina_id(page)
-    compare = id_tuple(id="15059501", type="observations")
-    assert ina_id == compare
+    obs = id_tuple(id="15059501", type="observations")
+    pho = id_tuple(id="12345", type="photos")
+    assert ina_id == (obs, pho)
+
+
+def test_find_ina_id_photos():
+    page = mock.MagicMock()
+    extlinks = [
+        "http://example.com",
+        "https://www.inaturalist.org/photos/12345",
+    ]
+    page.extlinks.return_value = extlinks
+    ina_id = inrbot.find_ina_id(page)
+    compare = id_tuple(id="12345", type="photos")
+    assert ina_id[1] == compare
 
 
 @pytest.mark.ext_web
@@ -174,15 +187,6 @@ def test_get_ina_data_wrong_endpoint():
     ina_id = id_tuple(id="anticompositenumber", type="people")
     response = inrbot.get_ina_data(ina_id)
     assert response is None
-
-
-@pytest.mark.ext_web
-@pytest.mark.xfail(reason="Issue #6")
-def test_get_ina_data_photo():
-    ina_id = id_tuple(id="58596678", type="photos")
-    response = inrbot.get_ina_data(ina_id)
-    assert response
-    assert type(response) is dict
 
 
 def test_get_ina_data_bad_data():
@@ -274,6 +278,39 @@ def test_find_photo_in_obs_notmatching():
     photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
     assert photo is None
     assert found == "notmatching"
+
+
+@pytest.mark.ext_web
+def test_find_photo_in_obs_ignore():
+    page = mock.MagicMock()
+    mock_compare = mock.Mock(return_value=False)
+    mock_config = {"use_ssim": False}
+    obs_id = id_tuple(id="36885889", type="observations")
+    photo_id = id_tuple(id="12345", type="photos")
+    ina_data = inrbot.get_ina_data(obs_id)
+
+    with mock.patch.dict("inrbot.config", mock_config):
+        with mock.patch("inrbot.compare_photo_hashes", mock_compare):
+            photo, found = inrbot.find_photo_in_obs(
+                page, obs_id, ina_data, raw_photo_id=photo_id
+            )
+    assert mock_compare.call_count == 3
+
+
+def test_find_photo_in_obs_photo():
+    page = mock.MagicMock()
+    mock_compare = mock.Mock(return_value=False)
+    mock_config = {"use_ssim": False}
+    obs_id = id_tuple(id="36885889", type="observations")
+    photo_id = id_tuple(id="58596679", type="photos")
+    ina_data = inrbot.get_ina_data(obs_id)
+
+    with mock.patch.dict("inrbot.config", mock_config):
+        with mock.patch("inrbot.compare_photo_hashes", mock_compare):
+            photo, found = inrbot.find_photo_in_obs(
+                page, obs_id, ina_data, raw_photo_id=photo_id
+            )
+    assert mock_compare.call_count == 1
 
 
 def test_find_ina_license():
@@ -670,8 +707,6 @@ def test_main_auto_total():
                 inrbot.main(total=total)
 
     assert review_file.call_count == total
-    sleep_sum = sum(n[0][0] for n in sleep.call_args_list)
-    assert sleep_sum == 60 * total
 
 
 def test_main_auto_end():
@@ -686,8 +721,6 @@ def test_main_auto_end():
                 inrbot.main(total=total)
 
     assert review_file.call_count == total
-    sleep_sum = sum(n[0][0] for n in sleep.call_args_list)
-    assert sleep_sum > 60 * total
 
 
 def test_main_auto_blocked():
@@ -720,8 +753,6 @@ def test_main_auto_exception():
                 inrbot.main(total=total)
 
     assert review_file.call_count == total
-    sleep_sum = sum(n[0][0] for n in sleep.call_args_list)
-    assert sleep_sum == 60 * total
 
 
 def test_main_single():
