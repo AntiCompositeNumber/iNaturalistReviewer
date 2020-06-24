@@ -40,7 +40,7 @@ from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
 import utils
 
-__version__ = "0.6.0"
+__version__ = "0.6.1"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(
@@ -211,7 +211,7 @@ def find_photo_in_obs(
                 logger.debug(f"Current photo: {photo}")
                 res, ssim = compare_ssim(orig, photo)
                 if res:
-                    return photo, f"ssim: {ssim}"
+                    return photo, f"ssim: {ssim:.4}"
                 if throttle:
                     throttle.throttle()
 
@@ -397,6 +397,7 @@ def update_review(
     reason: str = "",
 ) -> bool:
     """Updates the wikitext with the review status"""
+    logger.info(f"Status: {status} ({reason})")
     code = mwph.parse(page.text)
     template = make_template(
         photo_id=photo_id,
@@ -479,8 +480,8 @@ def save_page(
         )
     else:
         logger.info("Saving disabled")
-        logger.info(summary)
-        logger.info(new_text)
+        logger.debug(summary)
+        logger.debug(new_text)
 
 
 def get_author_talk(page: pywikibot.page.FilePage) -> pywikibot.page.Page:
@@ -581,7 +582,6 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
     com_license = find_com_license(page)
     logger.debug(f"Commons License: {com_license}")
     status = check_licenses(ina_license, com_license)
-    logger.info(f"Status: {status}")
     reviewed = update_review(
         page,
         photo_id,
