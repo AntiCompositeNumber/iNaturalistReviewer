@@ -35,13 +35,13 @@ import pywikibot  # type: ignore
 import pywikibot.pagegenerators as pagegenerators  # type: ignore
 import requests
 from PIL import Image  # type: ignore
-import sewar.full_ref as pyssim  # type: ignore
+import ssim as pyssim  # type: ignore
 
 from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
 import utils
 
-__version__ = "0.6.1"
+__version__ = "0.6.0"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(
@@ -210,10 +210,7 @@ def find_photo_in_obs(
         else:
             for photo in photos:
                 logger.debug(f"Current photo: {photo}")
-                try:
-                    res, ssim = compare_ssim(orig, photo)
-                except AttributeError:
-                    res = None
+                res, ssim = compare_ssim(orig, photo)
                 if res:
                     return photo, f"ssim: {ssim}"
                 if throttle:
@@ -274,7 +271,7 @@ def compare_ssim(
         return False, 0.0
     ina_image = Image.open(BytesIO(image))
 
-    ssim = pyssim.compare_ssim(orig, ina_image)
+    ssim = pyssim.compute_ssim(orig, ina_image)
     logger.debug(f"SSIM value: {ssim}")
     return (ssim > min_ssim, ssim)
 
