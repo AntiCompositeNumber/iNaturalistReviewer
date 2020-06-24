@@ -35,7 +35,7 @@ import pywikibot  # type: ignore
 import pywikibot.pagegenerators as pagegenerators  # type: ignore
 import requests
 from PIL import Image  # type: ignore
-import SSIM_PIL as pyssim  # type: ignore
+import sewar.full_ref as pyssim  # type: ignore
 
 from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
@@ -210,7 +210,10 @@ def find_photo_in_obs(
         else:
             for photo in photos:
                 logger.debug(f"Current photo: {photo}")
-                res, ssim = compare_ssim(orig, photo)
+                try:
+                    res, ssim = compare_ssim(orig, photo)
+                except AttributeError:
+                    res = None
                 if res:
                     return photo, f"ssim: {ssim}"
                 if throttle:
