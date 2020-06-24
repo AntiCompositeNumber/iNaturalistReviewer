@@ -35,7 +35,6 @@ import pywikibot  # type: ignore
 import pywikibot.pagegenerators as pagegenerators  # type: ignore
 import requests
 from PIL import Image  # type: ignore
-import ssim as pyssim  # type: ignore
 
 from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
@@ -271,7 +270,7 @@ def compare_ssim(
         return False, 0.0
     ina_image = Image.open(BytesIO(image))
 
-    ssim = pyssim.compute_ssim(orig, ina_image)
+    ssim = compute_ssim(orig, ina_image)
     logger.debug(f"SSIM value: {ssim}")
     return (ssim > min_ssim, ssim)
 
@@ -647,6 +646,8 @@ def main(page: Optional[pywikibot.page.BasePage] = None, total: int = 0) -> None
 
 
 config = get_config()
+if config["use_ssim"]:
+    from ssim import compute_ssim  # type: ignore
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Review files from iNaturalist on Commons",
