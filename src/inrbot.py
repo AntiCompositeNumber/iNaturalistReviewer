@@ -23,6 +23,7 @@ import json
 import logging
 import logging.config
 import re
+import resource
 import string
 import time
 import urllib.parse
@@ -209,6 +210,7 @@ def find_photo_in_obs(
         else:
             for photo in photos:
                 logger.debug(f"Current photo: {photo}")
+                logger.debug(resource.getrusage(resource.RUSAGE_SELF))
                 res, ssim = compare_ssim(orig, photo)
                 if res:
                     return photo, f"ssim: {ssim:.4}"
@@ -541,6 +543,7 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
     except ValueError:
         return None
     logger.info(f"Checking {page.title(as_link=True)}")
+    logger.debug(resource.getrusage(resource.RUSAGE_SELF))
 
     utils.check_runpage(site, run_override)
     if not check_can_run(page):
