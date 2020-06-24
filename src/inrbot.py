@@ -271,7 +271,7 @@ def compare_ssim(
         return False, 0.0
     ina_image = Image.open(BytesIO(image))
 
-    ssim = pyssim.compute_ssim(orig, ina_image)
+    ssim = pyssim.compare_ssim(orig, ina_image)
     logger.debug(f"SSIM value: {ssim}")
     return (ssim > min_ssim, ssim)
 
