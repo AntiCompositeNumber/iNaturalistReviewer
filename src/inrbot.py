@@ -548,11 +548,7 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
 
     raw_obs_id, raw_photo_id = find_ina_id(page)
     logger.info(f"ID found in wikitext: {raw_obs_id} {raw_photo_id}")
-    if raw_obs_id is None and raw_photo_id is None:
-        return None
-    elif raw_obs_id and not raw_photo_id:
-        pass
-    elif raw_photo_id and not raw_obs_id:
+    if raw_photo_id and not raw_obs_id:
         raw_obs_id = get_observation_from_photo(raw_photo_id)
 
     if not raw_obs_id:
