@@ -540,7 +540,7 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
         page = pywikibot.FilePage(inpage)
     except ValueError:
         return None
-    logger.info(f"Checking {page.title()}")
+    logger.info(f"Checking {page.title(as_link=True)}")
 
     utils.check_runpage(site, run_override)
     if not check_can_run(page):
@@ -586,7 +586,7 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
     com_license = find_com_license(page)
     logger.debug(f"Commons License: {com_license}")
     status = check_licenses(ina_license, com_license)
-    logger.debug(f"Status: {status}")
+    logger.info(f"Status: {status}")
     reviewed = update_review(
         page,
         photo_id,
