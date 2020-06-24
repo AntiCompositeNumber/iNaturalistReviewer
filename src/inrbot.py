@@ -649,6 +649,7 @@ config = get_config()
 if config["use_ssim"]:
     logging.info("Importing pyssim")
     from ssim import compute_ssim  # type: ignore
+
     logging.info("Import complete")
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
