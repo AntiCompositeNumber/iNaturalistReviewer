@@ -16,8 +16,8 @@ requests = "*"
 pywikibot = {git = "https://phabricator.wikimedia.org/diffusion/PWBC/pywikibot.git"}
 requests-oauthlib = "*"
 mwparserfromhell = "*"
-pyssim = "*"
 pillow = "*"
+ssim-pil = "*"
 
 [requires]
 python_version = "3.7"

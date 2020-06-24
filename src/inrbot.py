@@ -35,13 +35,13 @@ import pywikibot  # type: ignore
 import pywikibot.pagegenerators as pagegenerators  # type: ignore
 import requests
 from PIL import Image  # type: ignore
-import ssim as pyssim  # type: ignore
+import SSIM_PIL as pyssim  # type: ignore
 
 from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
 import utils
 
-__version__ = "0.6.0"
+__version__ = "0.6.1"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(
