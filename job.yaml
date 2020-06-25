@@ -34,11 +34,4 @@ spec:
             - name: LOG_SMTP
               value: "True"
           imagePullPolicy: Always
-          resources:
-            limits:
-              cpu: 500m
-              memory: 1024Mi
-            requests:
-              cpu: 150m
-              memory: 512Mi
       restartPolicy: Never
