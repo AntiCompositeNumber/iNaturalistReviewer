@@ -238,6 +238,7 @@ def test_find_photo_in_obs_ssim_pass():
     ina_data = inrbot.get_ina_data(obs_id)
     mock_config = {"use_ssim": True}
     from ssim import compute_ssim
+
     inrbot.compute_ssim = compute_ssim
     with mock.patch("inrbot.compare_photo_hashes", return_value=False):
         with mock.patch.dict("inrbot.config", mock_config):
@@ -257,6 +258,7 @@ def test_find_photo_in_obs_ssim_fail():
     page.get_file_url = mock_url
     mock_config = {"use_ssim": True}
     from ssim import compute_ssim
+
     inrbot.compute_ssim = compute_ssim
     with mock.patch("inrbot.compare_photo_hashes", return_value=False):
         with mock.patch.dict("inrbot.config", mock_config):
