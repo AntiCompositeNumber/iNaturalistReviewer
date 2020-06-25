@@ -236,8 +236,12 @@ def test_find_photo_in_obs_ssim_pass():
     page = pywikibot.FilePage(inrbot.site, "File:Acomys subspinosus 15087534.jpg")
     obs_id = id_tuple(id="10783720", type="observations")
     ina_data = inrbot.get_ina_data(obs_id)
+    mock_config = {"use_ssim": True}
+    from ssim import compute_ssim
+    inrbot.compute_ssim = compute_ssim
     with mock.patch("inrbot.compare_photo_hashes", return_value=False):
-        photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
+        with mock.patch.dict("inrbot.config", mock_config):
+            photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
 
     assert found.startswith("ssim")
     assert photo._replace(url="") == id_tuple(id="15087534", type="photos")
@@ -251,8 +255,12 @@ def test_find_photo_in_obs_ssim_fail():
     thumb_url = page.get_file_url(url_width=340)
     mock_url = mock.Mock(return_value=thumb_url)
     page.get_file_url = mock_url
+    mock_config = {"use_ssim": True}
+    from ssim import compute_ssim
+    inrbot.compute_ssim = compute_ssim
     with mock.patch("inrbot.compare_photo_hashes", return_value=False):
-        photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
+        with mock.patch.dict("inrbot.config", mock_config):
+            photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
 
     assert found == "notmatching"
     assert photo is None
