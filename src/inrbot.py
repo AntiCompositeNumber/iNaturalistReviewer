@@ -40,7 +40,7 @@ from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
 import utils
 
-__version__ = "0.6.1"
+__version__ = "0.6.2"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(
@@ -237,7 +237,7 @@ def compare_photo_hashes(page: pywikibot.FilePage, photo: iNaturalistID) -> bool
 def get_ina_image(photo: iNaturalistID, final: bool = False) -> bytes:
     """Download original photo from iNaturalist"""
     if photo.url:
-        extension = photo.url.rpartition("?")[0].rpartition(".")[2]
+        extension = photo.url.partition("?")[0].rpartition(".")[2]
     else:
         extension == "jpeg"
     url = f"https://static.inaturalist.org/photos/{photo.id}/original.{extension}"
