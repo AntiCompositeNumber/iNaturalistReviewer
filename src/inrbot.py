@@ -40,7 +40,7 @@ from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
 import utils
 
-__version__ = "0.6.2"
+__version__ = "0.6.3"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(

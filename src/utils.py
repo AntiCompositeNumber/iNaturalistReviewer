@@ -139,14 +139,29 @@ def check_runpage(site: pywikibot.Site, override: bool = False) -> None:
 
 
 def save_page(
-    text: str, page: pywikibot.Page, summary: str, bot: bool = True, minor: bool = False
+    text: str,
+    page: pywikibot.Page,
+    summary: str,
+    bot: bool = True,
+    minor: bool = False,
+    mode: str = "replace",
 ) -> None:
     logger.info(f"Saving to {page.title()}")
     if not text:
         raise pywikibot.PageNotSaved(
             page, message="New page text is blank, page %s was not saved"
         )
-    elif page.text == text:
+
+    if mode == "replace":
+        text = text
+    elif mode == "append":
+        text = page.get(force=True) + text
+    elif mode == "prepend":
+        text = text + page.get(force=True)
+    else:
+        raise ValueError("mode must be 'replace', 'append', or 'prepend', not {mode}")
+
+    if page.get(force=True) == text:
         raise pywikibot.PageNotSaved(
             page, message="Page text did not change, page %s was not saved"
         )
