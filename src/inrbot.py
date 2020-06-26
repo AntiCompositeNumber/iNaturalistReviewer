@@ -18,6 +18,7 @@
 # limitations under the License.
 
 import argparse
+import datetime
 import hashlib
 import json
 import logging
@@ -40,7 +41,7 @@ from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
 import utils
 
-__version__ = "0.6.3"
+__version__ = "0.6.4"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(
@@ -395,6 +396,7 @@ def update_review(
     review_license: str = "",
     upload_license: str = "",
     reason: str = "",
+    is_old: bool = False,
 ) -> bool:
     """Updates the wikitext with the review status"""
     logger.info(f"Status: {status} ({reason})")
@@ -407,10 +409,14 @@ def update_review(
         upload_license=upload_license,
         reason=reason,
     )
+    changed = False
     for review_template in code.ifilter_templates(
         matches=lambda t: t.name.lower() == "inaturalistreview"
     ):
         code.replace(review_template, template)
+        changed = True
+    if not changed:
+        return False
     if status == "pass-change":
         aliases = Aliases(upload_license)
         for pt2 in code.ifilter_templates(matches=aliases.is_license):
@@ -418,9 +424,9 @@ def update_review(
     if status == "fail":
         code.insert(
             0,
-            string.Template(config["fail_tag"]).safe_substitute(
-                review_license=review_license
-            ),
+            string.Template(
+                config["old_fail_tag"] if is_old else config["fail_tag"]
+            ).safe_substitute(review_license=review_license),
         )
 
     try:
@@ -488,17 +494,19 @@ def get_author_talk(page: pywikibot.page.FilePage) -> pywikibot.page.Page:
     return pywikibot.Page(site, f"User talk:{page.oldest_file_info.user}")
 
 
-def fail_warning(page: pywikibot.page.BasePage, review_license: str) -> None:
+def fail_warning(
+    page: pywikibot.page.BasePage, review_license: str, is_old: bool = False
+) -> None:
     user_talk = get_author_talk(page)
-    message = string.Template(config["fail_warn"]).safe_substitute(
-        filename=page.title(with_ns=True), review_license=review_license
-    )
+    message = string.Template(
+        config["old_fail_warn"] if is_old else config["fail_warn"]
+    ).safe_substitute(filename=page.title(with_ns=True), review_license=review_license)
     summary = string.Template(config["review_summary"]).safe_substitute(
         status="fail", review_license=review_license, version=__version__
     )
     if not simulate:
         utils.check_runpage(site, run_override)
-        logger.info(f"Saving {page.title()}")
+        logger.info(f"Saving {user_talk.title()}")
         utils.retry(
             utils.save_page,
             3,
@@ -525,6 +533,19 @@ def get_observation_from_photo(photo_id: iNaturalistID) -> Optional[iNaturalistI
         return None
     else:
         return iNaturalistID(type="observations", id=match.group(1))
+
+
+def file_is_old(page: pywikibot.page.FilePage) -> bool:
+    if not config.get("old_fail", False):
+        return False
+
+    timestamp = page.latest_file_info.timestamp
+    if (datetime.datetime.now() - timestamp) > datetime.timedelta(
+        days=config["old_fail_age"]
+    ):
+        return True
+    else:
+        return False
 
 
 def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
@@ -582,6 +603,8 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
     com_license = find_com_license(page)
     logger.debug(f"Commons License: {com_license}")
     status = check_licenses(ina_license, com_license)
+    if status == "fail":
+        is_old = file_is_old(page)
     reviewed = update_review(
         page,
         photo_id,
@@ -590,9 +613,10 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
         review_license=ina_license,
         upload_license=com_license,
         reason=found,
+        is_old=is_old,
     )
     if status == "fail" and reviewed:
-        fail_warning(page, ina_license)
+        fail_warning(page, ina_license, is_old)
 
     return reviewed
 

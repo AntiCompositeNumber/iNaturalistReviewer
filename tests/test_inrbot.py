@@ -19,6 +19,7 @@
 
 import unittest.mock as mock
 import pytest
+import datetime
 import inspect
 import json
 import requests
@@ -422,6 +423,23 @@ def test_check_licenses_error():
         ),
         (
             test_data_dir + "/section.txt",
+            dict(
+                status="fail",
+                author="Author",
+                review_license="Cc-by-nd-4.0",
+                upload_license="Cc-by-sa-4.0",
+                reason="sha1",
+                is_old=True,
+            ),
+            (
+                "{{cc-by-sa-4.0}}{{iNaturalistReview |status=fail |author=Author "
+                "|sourceurl=https://www.inaturalist.org/photos/11505950 "
+                f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
+                " |reviewlicense=Cc-by-nd-4.0 |reason=sha1}}"
+            ),
+        ),
+        (
+            test_data_dir + "/section.txt",
             dict(status="error", reason="nodata", photo_id=None),
             (
                 "{{cc-by-sa-4.0}}{{iNaturalistReview |status=error "
@@ -615,7 +633,10 @@ def test_update_review(filename, kwargs, compare):
     assert "{{cc by 4.0}}" not in new_text
     assert "{{cc-by-4.0}}" not in new_text
     if kwargs.get("status", "") == "fail":
-        assert "{{copyvio" in new_text
+        if kwargs.get("is_old", False):
+            assert inrbot.config["old_fail_tag"][:11] in new_text
+        else:
+            assert inrbot.config["fail_tag"][:9] in new_text
 
 
 def test_update_review_broken():
@@ -705,11 +726,58 @@ def test_get_author_talk():
     assert inrbot.get_author_talk(page) == user_talk
 
 
+@pytest.mark.parametrize("is_old", [False, True])
+def test_fail_warning(is_old):
+    file_page = mock.MagicMock()
+    page = mock.Mock()
+    page.text = "old_text"
+    page.get.return_value = page.text
+    mock_get_author_talk = mock.Mock(return_value=page)
+    review_license = "licensereview"
+
+    inrbot.simulate = False
+    with mock.patch("inrbot.get_author_talk", mock_get_author_talk):
+        inrbot.fail_warning(file_page, review_license, is_old)
+
+    mock_get_author_talk.assert_called_once_with(file_page)
+
+    assert "old_text" in page.text
+    if is_old:
+        assert inrbot.config["old_fail_warn"][:26] in page.text
+    else:
+        assert inrbot.config["fail_warn"][:21] in page.text
+    assert review_license in page.text
+    assert "~~~~" in page.text
+    page.save.assert_called_once()
+
+    summary = page.save.call_args[1]["summary"]
+    assert "fail" in summary
+    assert review_license in summary
+
+
 @pytest.mark.ext_web
 def test_get_observation_from_photo():
     photo_id = id_tuple(type="photos", id="58596679")
     obs_id = id_tuple(type="observations", id="36885889")
     assert inrbot.get_observation_from_photo(photo_id) == obs_id
+
+
+@pytest.mark.parametrize(
+    "conf,expected",
+    [
+        ({"old_fail": False}, False),
+        ({"old_fail": True, "old_fail_age": 180}, False),
+        ({"old_fail": True, "old_fail_age": 10}, True),
+    ],
+)
+def test_file_is_old(conf, expected):
+    mock_page = mock.Mock()
+    mock_page.latest_file_info.timestamp = datetime.datetime.now() - datetime.timedelta(
+        days=60
+    )
+    with mock.patch.dict("inrbot.config", conf):
+        result = inrbot.file_is_old(mock_page)
+    assert result is expected
 
 
 def test_main_auto_total():
