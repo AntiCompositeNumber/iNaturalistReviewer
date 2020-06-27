@@ -399,6 +399,7 @@ def update_review(
     upload_license: str = "",
     reason: str = "",
     is_old: bool = False,
+    throttle: Optional[utils.Throttle] = None,
 ) -> bool:
     """Updates the wikitext with the review status"""
     logger.info(f"Status: {status} ({reason})")
@@ -430,6 +431,8 @@ def update_review(
                 config["old_fail_tag"] if is_old else config["fail_tag"]
             ).safe_substitute(review_license=review_license),
         )
+    if throttle is not None:
+        throttle.throttle()
 
     try:
         save_page(page, str(code), status, review_license)
@@ -550,7 +553,9 @@ def file_is_old(page: pywikibot.page.FilePage) -> bool:
         return False
 
 
-def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
+def review_file(
+    inpage: pywikibot.page.BasePage, throttle: Optional[utils.Throttle] = None
+) -> Optional[bool]:
     """Performs a license review on the input page
 
     inpage must be in the file namespace.
@@ -576,7 +581,7 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
 
     if not raw_obs_id:
         logger.info("No observation ID could be found")
-        update_review(page, status="error", reason="url")
+        update_review(page, status="error", reason="url", throttle=throttle)
         return False
 
     ina_throttle = utils.Throttle(10)
@@ -584,7 +589,7 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
 
     if not ina_data:
         logger.warning("No data retrieved from iNaturalist!")
-        update_review(page, status="error", reason="nodata")
+        update_review(page, status="error", reason="nodata", throttle=throttle)
         return False
 
     photo_id, found = find_photo_in_obs(
@@ -592,7 +597,7 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
     )
     if photo_id is None:
         logger.info(f"Images did not match: {found}")
-        update_review(page, status="error", reason=found)
+        update_review(page, status="error", reason=found, throttle=throttle)
         return False
     else:
         assert isinstance(photo_id, iNaturalistID)
@@ -618,6 +623,7 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
         upload_license=com_license,
         reason=found,
         is_old=is_old,
+        throttle=throttle,
     )
     if status == "fail" and reviewed:
         fail_warning(page, ina_license, is_old)
@@ -642,7 +648,7 @@ def main(
         logger.info("Beginning loop")
         i = 0
         running = True
-        throttle = utils.Throttle(15)
+        throttle = utils.Throttle(config.get("edit_throttle", 60))
         while (not total) or (i < total):
             for page in files_to_check(start):
                 if total and i >= total:
