@@ -608,7 +608,7 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
     if status == "fail":
         is_old = file_is_old(page)
     else:
-        is_old = None
+        is_old = False
     reviewed = update_review(
         page,
         photo_id,
