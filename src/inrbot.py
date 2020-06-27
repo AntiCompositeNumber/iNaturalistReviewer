@@ -696,6 +696,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--total",
         action="store",
+        type=int,
         help="review no more than this number of files in automatic mode",
         default=0,
     )
@@ -735,9 +736,9 @@ if __name__ == "__main__":
         simulate = args.simulate
 
     if args.auto:
-        main(total=args.total)
+        main(total=args.total, start=args.start)
     elif args.file and "File" in args.file:
-        main(page=pywikibot.Page(site, args.file), start=args.start)
+        main(page=pywikibot.Page(site, args.file))
 else:
     run_override = False
     simulate = False
