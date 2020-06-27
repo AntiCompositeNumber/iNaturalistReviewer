@@ -102,10 +102,12 @@ def check_can_run(page: pywikibot.page.BasePage) -> bool:
         return True
 
 
-def files_to_check() -> pywikibot.page.BasePage:
+def files_to_check(start: Optional[str] = None) -> pywikibot.page.BasePage:
     """Iterate list of files needing review from Commons"""
     category = pywikibot.Category(site, "Category:INaturalist review needed")
-    for page in pagegenerators.CategorizedPageGenerator(category, namespaces=6):
+    for page in pagegenerators.CategorizedPageGenerator(
+        category, namespaces=6, start=start
+    ):
         yield page
 
 
@@ -621,7 +623,11 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
     return reviewed
 
 
-def main(page: Optional[pywikibot.page.BasePage] = None, total: int = 0) -> None:
+def main(
+    page: Optional[pywikibot.page.BasePage] = None,
+    total: int = 0,
+    start: Optional[str] = None,
+) -> None:
     """Main loop for program"""
     # Enumerate starts at 0, so to get N items, count to N-1.
     if page:
@@ -636,7 +642,7 @@ def main(page: Optional[pywikibot.page.BasePage] = None, total: int = 0) -> None
         running = True
         throttle = utils.Throttle(15)
         while (not total) or (i < total):
-            for page in files_to_check():
+            for page in files_to_check(start):
                 if total and i >= total:
                     break
                 else:
@@ -699,6 +705,9 @@ if __name__ == "__main__":
         dest="ignore_runpage",
         help="skip the runpage check for testing",
     )
+    parser.add_argument(
+        "--start", action="store", help="sortkey to start iterating at", default=None,
+    )
     sim = parser.add_mutually_exclusive_group()
     sim.add_argument(
         "--simulate",
@@ -728,7 +737,7 @@ if __name__ == "__main__":
     if args.auto:
         main(total=args.total)
     elif args.file and "File" in args.file:
-        main(page=pywikibot.Page(site, args.file))
+        main(page=pywikibot.Page(site, args.file), start=args.start)
 else:
     run_override = False
     simulate = False
