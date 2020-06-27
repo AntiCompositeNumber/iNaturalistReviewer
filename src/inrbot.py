@@ -41,7 +41,7 @@ from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
 import utils
 
-__version__ = "0.6.4"
+__version__ = "0.6.5"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(
@@ -607,6 +607,8 @@ def review_file(inpage: pywikibot.page.BasePage) -> Optional[bool]:
     status = check_licenses(ina_license, com_license)
     if status == "fail":
         is_old = file_is_old(page)
+    else:
+        is_old = None
     reviewed = update_review(
         page,
         photo_id,
