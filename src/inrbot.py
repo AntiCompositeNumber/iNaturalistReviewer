@@ -27,7 +27,6 @@ import re
 import string
 import time
 import urllib.parse
-from datetime import date
 from hmac import compare_digest
 from io import BytesIO
 
@@ -36,6 +35,7 @@ import pywikibot  # type: ignore
 import pywikibot.pagegenerators as pagegenerators  # type: ignore
 import requests
 from PIL import Image  # type: ignore
+import waybackpy
 
 from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
@@ -51,17 +51,18 @@ logger = logging.getLogger("inrbot")
 
 site = pywikibot.Site("commons", "commons")
 skip: Set[str] = set()
-session = requests.Session()
-session.headers.update(
-    {
-        "user-agent": f"Bot iNaturalistReviewer/{__version__} "
-        "on Wikimedia Toolforge "
-        f"(Contact: https://commons.wikimedia.org/wiki/User:{username}; "
-        "https://www.inaturalist.org/people/anticompositenumber "
-        "tools.inaturalistreviewer@tools.wmflabs.org) "
-        f"Python requests/{requests.__version__}"
-    }
+user_agent = (
+    f"Bot iNaturalistReviewer/{__version__} "
+    "on Wikimedia Toolforge "
+    f"(Contact: https://commons.wikimedia.org/wiki/User:{username}; "
+    "https://www.inaturalist.org/people/anticompositenumber "
+    "tools.inaturalistreviewer@tools.wmflabs.org) "
+    f"Python requests/{requests.__version__}"
 )
+
+session = requests.Session()
+session.headers.update({"user-agent": user_agent})
+recent_bytes = {}
 
 
 class iNaturalistID(NamedTuple):
@@ -259,6 +260,43 @@ def get_commons_image(page: pywikibot.FilePage) -> Image.Image:
     return Image.open(BytesIO(response.content))
 
 
+def bytes_throttle(length: int) -> None:
+    hour_limit = 4.5e9
+    day_limit = 23.5e9
+    global recent_bytes
+    logger.debug(f"Content length: {length}")
+    now = datetime.datetime.now()
+    recent_bytes[datetime.datetime.now()] = length
+
+    last_hour = 0
+    last_day = 0
+    for date, val in recent_bytes.copy().items():
+        if now - date <= datetime.timedelta(hours=24):
+            last_day += val
+            if now - date <= datetime.timedelta(hours=1):
+                last_hour += val
+        else:
+            del recent_bytes[date]
+
+    logger.debug(f"Hour total: {last_hour}, day total: {last_day}")
+    if last_day >= day_limit:
+        logger.error(
+            f"{last_day} bytes transferred in last 24h, approaching iNaturalist limits!"
+        )
+        sleep_time = 3600 * 12  # 12 hours
+    elif last_hour >= hour_limit:
+        logger.error(
+            f"{last_hour} bytes transferred in last hour, "
+            "approaching iNaturalist limits!"
+        )
+        sleep_time = 60 * 30  # 30 minutes
+    else:
+        return None
+    logger.info(f"Sleeping for {sleep_time} seconds")
+    time.sleep(sleep_time)
+    return None
+
+
 def compare_ssim(
     orig: Image, photo: iNaturalistID, min_ssim: float = 0.0
 ) -> Tuple[bool, float]:
@@ -400,6 +438,7 @@ def update_review(
     reason: str = "",
     is_old: bool = False,
     throttle: Optional[utils.Throttle] = None,
+    archive: str = "",
 ) -> bool:
     """Updates the wikitext with the review status"""
     logger.info(f"Status: {status} ({reason})")
@@ -411,6 +450,7 @@ def update_review(
         review_license=review_license,
         upload_license=upload_license,
         reason=reason,
+        archive=archive,
     )
     changed = False
     for review_template in code.ifilter_templates(
@@ -450,6 +490,7 @@ def make_template(
     review_license: str = "",
     upload_license: str = "",
     reason: str = "",
+    archive: str = "",
 ) -> str:
     """Constructs the iNaturalistReview template"""
     template = string.Template(config[status])
@@ -457,11 +498,12 @@ def make_template(
         status=status,
         author=author,
         source_url=str(photo_id),
-        review_date=date.today().isoformat(),
+        review_date=datetime.date.today().isoformat(),
         reviewer=username,
         review_license=review_license,
         upload_license=upload_license,
         reason=reason,
+        archive=archive,
     )
     return text
 
@@ -610,10 +652,17 @@ def review_file(
     com_license = find_com_license(page)
     logger.debug(f"Commons License: {com_license}")
     status = check_licenses(ina_license, com_license)
+
     if status == "fail":
         is_old = file_is_old(page)
     else:
         is_old = False
+
+    if status in ("pass", "pass-change"):
+        archive = waybackpy.save(str(photo_id), UA=user_agent)
+    else:
+        archive = ""
+
     reviewed = update_review(
         page,
         photo_id,
@@ -624,6 +673,7 @@ def review_file(
         reason=found,
         is_old=is_old,
         throttle=throttle,
+        archive=archive,
     )
     if status == "fail" and reviewed:
         fail_warning(page, ina_license, is_old)
