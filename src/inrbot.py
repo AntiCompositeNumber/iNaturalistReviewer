@@ -35,7 +35,7 @@ import pywikibot  # type: ignore
 import pywikibot.pagegenerators as pagegenerators  # type: ignore
 import requests
 from PIL import Image  # type: ignore
-import waybackpy
+import waybackpy  # type: ignore
 
 from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
