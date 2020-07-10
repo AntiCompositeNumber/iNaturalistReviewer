@@ -658,7 +658,7 @@ def review_file(
     else:
         is_old = False
 
-    if status in ("pass", "pass-change"):
+    if config["use_wayback"] and status in ("pass", "pass-change"):
         archive = waybackpy.save(str(photo_id), UA=user_agent)
     else:
         archive = ""
