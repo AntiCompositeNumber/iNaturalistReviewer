@@ -20,6 +20,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
+    - name: match Pipfile and requirements.txt
+      run: |
+        pipenv_to_requirements -f
+        git diff --exit-code
     - name: Load pywikibot config
       env:
         USER_CONFIG_PY: ${{ secrets.user_config_py }}
