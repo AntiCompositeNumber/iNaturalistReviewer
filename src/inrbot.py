@@ -41,7 +41,7 @@ from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
 import utils
 
-__version__ = "0.6.5"
+__version__ = "0.6.6"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(
@@ -659,7 +659,7 @@ def review_file(
         is_old = False
 
     if config["use_wayback"] and status in ("pass", "pass-change"):
-        archive = waybackpy.save(str(photo_id), UA=user_agent)
+        archive = waybackpy.Url(str(photo_id), user_agent).save()
     else:
         archive = ""
 
