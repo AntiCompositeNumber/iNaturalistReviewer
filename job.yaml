@@ -25,7 +25,6 @@ spec:
           ]
           args: [
             "--auto",
-            "--simulate"
           ]
           workingDir: /data/project/inaturalistreviewer
           env:

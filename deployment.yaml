@@ -1,32 +1,42 @@
 ---
 # Run iNR on kubernetes
 # Copied from https://wikitech.wikimedia.org/wiki/Help:Toolforge/Kubernetes#Kubernetes_continuous_jobs
-# FIXME: Needs to be updated for 2020 k8s on Toolforge
+apiVersion: apps/v1
 kind: Deployment
-apiVersion: extensions/v1beta1
 metadata:
   name: inaturalistreviewer.bot
-  namespace: inaturalistreviewer
+  namespace: tool-inaturalistreviewer
+  labels:
+    name: inaturalistreviewer.bot
+    # The toolforge=tool label will cause $HOME and other paths to be mounted from Toolforge
+    toolforge: tool
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      name: inaturalistreviewer.bot
+      toolforge: tool
   template:
     metadata:
       labels:
         name: inaturalistreviewer.bot
+        toolforge: tool
     spec:
       containers:
         - name: bot
           image: docker-registry.tools.wmflabs.org/toolforge-python37-sssd-base:latest
-          command: [ "/data/project/inaturalistreviewer/venv/bin/python3", "/data/project/inaturalistreviewer/iNaturalistReviewer/src/inrbot.py", "--auto" ]
+          command: [ 
+            "/data/project/inaturalistreviewer/venv/bin/python3", 
+            "/data/project/inaturalistreviewer/iNaturalistReviewer/src/inrbot.py", 
+          ]
+          args: [
+            "--auto",
+          ]
           workingDir: /data/project/inaturalistreviewer
           env:
             - name: HOME
               value: /data/project/inaturalistreviewer
+            - name: LOG_SMTP
+              value: "True"
           imagePullPolicy: Always
-          volumeMounts:
-            - name: home
-              mountPath: /data/project/inaturalistreviewer
-      volumes:
-        - name: home
-          hostPath:
-            path: /data/project/inaturalistreviewer
+
