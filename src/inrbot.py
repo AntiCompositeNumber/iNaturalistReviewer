@@ -41,7 +41,7 @@ from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
 import utils
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(
@@ -595,6 +595,16 @@ def file_is_old(page: pywikibot.page.FilePage) -> bool:
         return False
 
 
+def get_archive(photo_id: iNaturalistID) -> str:
+    try:
+        archive = waybackpy.Url(str(photo_id), user_agent).save()
+    except Exception as err:
+        logger.warn("Failed to get archive")
+        logger.exception(err)
+        archive = ""
+    return archive
+
+
 def review_file(
     inpage: pywikibot.page.BasePage, throttle: Optional[utils.Throttle] = None
 ) -> Optional[bool]:
@@ -659,7 +669,7 @@ def review_file(
         is_old = False
 
     if config["use_wayback"] and status in ("pass", "pass-change"):
-        archive = waybackpy.Url(str(photo_id), user_agent).save()
+        archive = get_archive(photo_id)
     else:
         archive = ""
 
