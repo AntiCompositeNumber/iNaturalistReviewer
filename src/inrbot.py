@@ -41,7 +41,7 @@ from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
 import utils
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(
@@ -63,6 +63,7 @@ user_agent = (
 session = requests.Session()
 session.headers.update({"user-agent": user_agent})
 recent_bytes = {}
+conf_ts = None
 
 
 class iNaturalistID(NamedTuple):
@@ -80,13 +81,24 @@ class iNaturalistID(NamedTuple):
             return NotImplemented
 
 
-def get_config():
+class RestartBot(RuntimeError):
+    pass
+
+
+def get_config() -> Tuple[dict, datetime.datetime]:
     """Load on-wiki configuration"""
     page = pywikibot.Page(site, "User:iNaturalistReviewBot/config.json")
     conf_json = json.loads(page.text)
     logger.info(f"Loaded config from {page.title(as_link=True)}")
-    logger.debug(conf_json)
-    return conf_json
+    logger.debug(json.dumps(conf_json, indent=2))
+    ts = datetime.datetime.utcnow()
+    return conf_json, ts
+
+
+def check_config():
+    page = pywikibot.Page(site, "User:iNaturalistReviewBot/config.json")
+    if not conf_ts or page.editTime() > conf_ts:
+        raise RestartBot("Configuration has been updated, bot will restart")
 
 
 def check_can_run(page: pywikibot.page.BasePage) -> bool:
@@ -716,12 +728,12 @@ def main(
             for page in files_to_check(start):
                 if total and i >= total:
                     break
-                else:
-                    i += 1
+                i += 1
 
                 try:
+                    check_config()
                     review_file(page)
-                except pywikibot.UserBlocked as err:
+                except (pywikibot.UserBlocked, RestartBot) as err:
                     # Blocks and runpage checks always stop
                     logger.exception(err)
                     raise
@@ -746,7 +758,7 @@ def main(
                 time.sleep(300)
 
 
-config = get_config()
+config, conf_ts = get_config()
 if config["use_ssim"]:
     logging.info("Importing pyssim")
     from ssim import compute_ssim  # type: ignore
