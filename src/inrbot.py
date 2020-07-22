@@ -141,7 +141,10 @@ def parse_ina_url(raw_url: str) -> Optional[iNaturalistID]:
     """Parses an iNaturalist URL into an iNaturalistID named tuple"""
     url = urllib.parse.urlparse(raw_url)
     path = url.path.split(sep="/")
-    if len(path) == 3 and "www.inaturalist.org" in url.netloc:
+    if len(path) == 3 and url.netloc.lower() in (
+        "www.inaturalist.org",
+        "inaturalist.org",
+    ):
         return iNaturalistID(type=path[1], id=str(path[2]))
     else:
         return None

@@ -121,59 +121,49 @@ def test_files_to_check():
     assert inspect.isgeneratorfunction(inrbot.files_to_check)
 
 
-def test_find_ina_id():
+@pytest.mark.parametrize(
+    "extlinks,expected",
+    [
+        (
+            [
+                "http://example.com",
+                "https://www.inaturalist.org/observations/15059501",
+            ],
+            (id_tuple(id="15059501", type="observations"), None),
+        ),
+        (["http://example.com"], (None, None)),
+        ([], (None, None)),
+        (
+            [
+                "https://www.inaturalist.org/photos/12345",
+                "https://www.inaturalist.org/observations/15059501",
+            ],
+            (
+                id_tuple(id="15059501", type="observations"),
+                id_tuple(id="12345", type="photos"),
+            ),
+        ),
+        (
+            ["http://example.com", "https://www.inaturalist.org/photos/12345"],
+            (None, id_tuple(id="12345", type="photos")),
+        ),
+        (
+            [
+                "http://inaturalist.org/photos/12345",
+                "http://inaturalist.org/observations/15059501",
+            ],
+            (
+                id_tuple(id="15059501", type="observations"),
+                id_tuple(id="12345", type="photos"),
+            ),
+        )
+    ],
+)
+def test_find_ina_id(extlinks, expected):
     page = mock.MagicMock()
-    extlinks = [
-        "http://example.com",
-        "https://www.inaturalist.org/observations/15059501",
-    ]
     page.extlinks.return_value = extlinks
     ina_id = inrbot.find_ina_id(page)
-    compare = id_tuple(id="15059501", type="observations")
-    assert ina_id[0] == compare
-
-
-def test_find_ina_id_none():
-    page = mock.MagicMock()
-    extlinks = [
-        "http://example.com",
-    ]
-    page.extlinks.return_value = extlinks
-    ina_id = inrbot.find_ina_id(page)
-    assert ina_id == (None, None)
-
-
-def test_find_ina_id_nourls():
-    page = mock.MagicMock()
-    extlinks = []
-    page.extlinks.return_value = extlinks
-    ina_id = inrbot.find_ina_id(page)
-    assert ina_id == (None, None)
-
-
-def test_find_ina_id_multiple():
-    page = mock.MagicMock()
-    extlinks = [
-        "https://www.inaturalist.org/photos/12345",
-        "https://www.inaturalist.org/observations/15059501",
-    ]
-    page.extlinks.return_value = extlinks
-    ina_id = inrbot.find_ina_id(page)
-    obs = id_tuple(id="15059501", type="observations")
-    pho = id_tuple(id="12345", type="photos")
-    assert ina_id == (obs, pho)
-
-
-def test_find_ina_id_photos():
-    page = mock.MagicMock()
-    extlinks = [
-        "http://example.com",
-        "https://www.inaturalist.org/photos/12345",
-    ]
-    page.extlinks.return_value = extlinks
-    ina_id = inrbot.find_ina_id(page)
-    compare = id_tuple(id="12345", type="photos")
-    assert ina_id[1] == compare
+    assert ina_id == expected
 
 
 @pytest.mark.ext_web
