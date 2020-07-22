@@ -746,9 +746,9 @@ def main(
                         # of pages or another exception, stop the bot.
                         logger.exception(err)
                         raise
-
+                else:
+                    running = True
                 throttle.throttle()
-                running = True
             else:
                 # If the for loop drops out, there are no more pages right now
                 if running:

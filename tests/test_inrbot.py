@@ -156,7 +156,7 @@ def test_files_to_check():
                 id_tuple(id="15059501", type="observations"),
                 id_tuple(id="12345", type="photos"),
             ),
-        )
+        ),
     ],
 )
 def test_find_ina_id(extlinks, expected):
@@ -830,7 +830,23 @@ def test_main_auto_blocked():
     sleep.assert_not_called()
 
 
-def test_main_auto_exception():
+def test_main_auto_exception_continue():
+    # Other exceptions can be handled
+    review_file = mock.MagicMock()
+    review_file.side_effect = [ValueError, None, None]
+    sleep = mock.MagicMock()
+    files_to_check = mock.MagicMock(return_value=range(0, 10))
+    total = 3
+
+    with mock.patch("inrbot.review_file", review_file):
+        with mock.patch("time.sleep", sleep):
+            with mock.patch("inrbot.files_to_check", files_to_check):
+                inrbot.main(total=total)
+
+    assert review_file.call_count == total
+
+
+def test_main_auto_exception_stop():
     # Other exceptions can be handled
     review_file = mock.MagicMock()
     review_file.side_effect = ValueError
@@ -841,7 +857,8 @@ def test_main_auto_exception():
     with mock.patch("inrbot.review_file", review_file):
         with mock.patch("time.sleep", sleep):
             with mock.patch("inrbot.files_to_check", files_to_check):
-                inrbot.main(total=total)
+                with pytest.raises(ValueError):
+                    inrbot.main(total=total)
 
     assert review_file.call_count == total
 
