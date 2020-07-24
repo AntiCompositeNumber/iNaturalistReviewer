@@ -157,6 +157,17 @@ def test_files_to_check():
                 id_tuple(id="12345", type="photos"),
             ),
         ),
+        (
+            [
+                "http://www.inaturalist.nz/photos/12345",
+                "http://www.inaturalist.nz/observations/15059501",
+            ],
+            (
+                id_tuple(id="15059501", type="observations"),
+                id_tuple(id="12345", type="photos"),
+            ),
+        ),
+
     ],
 )
 def test_find_ina_id(extlinks, expected):
