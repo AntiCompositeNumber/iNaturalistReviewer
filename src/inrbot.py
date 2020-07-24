@@ -353,7 +353,7 @@ def find_ina_license(ina_data: dict, photo: iNaturalistID) -> str:
     photos: list = ina_data.get("photos", [])
     for photo_data in photos:
         if str(photo_data.get("id")) == photo.id:
-            license_code = photo_data.get("license_code")
+            license_code = photo_data.get("license_code", "null")
             break
     else:
         return ""

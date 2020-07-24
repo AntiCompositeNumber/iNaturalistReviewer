@@ -167,7 +167,6 @@ def test_files_to_check():
                 id_tuple(id="12345", type="photos"),
             ),
         ),
-
     ],
 )
 def test_find_ina_id(extlinks, expected):
