@@ -132,7 +132,7 @@ def find_ina_id(
     observations = set()
     for url in page.extlinks():
         url_id = parse_ina_url(url)
-        if url_id is None:
+        if url_id is None or re.search(r"[A-z]", url_id.id):
             continue
         elif url_id.type == "observations":
             observations.add(url_id)
