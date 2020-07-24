@@ -41,7 +41,7 @@ from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
 import utils
 
-__version__ = "1.0.4"
+__version__ = "1.0.6"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(
@@ -358,6 +358,9 @@ def find_ina_license(ina_data: dict, photo: iNaturalistID) -> str:
             break
     else:
         return ""
+
+    if not license_code:
+        license_code = "null"
 
     return licenses.get(license_code, "")
 
