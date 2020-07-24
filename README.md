@@ -24,7 +24,7 @@ Optional args:
 
 ## Deployment
 This bot runs on Toolforge as `inaturalistreviewer` with the `python3.7` Kubernetes container.
-The k8s configuration is stored in `deployment.yaml` and assumes that there is a python 3.7 virtualenv in `/data/project/inaturalistreviewer/venv/`.
+The k8s configuration is stored in `deployment.yaml` and `job.yaml` and assumes that there is a python 3.7 virtualenv in `/data/project/inaturalistreviewer/venv/`.
 
 To stop the bot:
 `kubectl delete deployment inaturalistreviewer.bot`
@@ -59,3 +59,10 @@ If the bot determines that the image is freely licensed on iNaturalist but the C
 
 If the bot determines that the image is under a non-free license on iNaturalist, it will add `{{copyvio|Bot license review NOT PASSED: iNaturalist author is using <review_license>` to the top of the file and set `|status=fail` with the author, source url, review date, reviewer, and review license parameters.
 
+### |reason= parameter
+The bot will add a `|reason=` parameter when it tags files. This parameter is not read by the template, and exists mostly for debugging.
+- `url`: No iNaturalist /photos/ or /observations/ URL was found on the file page.
+- `nodata`: No data was recieved from the iNaturalist API. This usually indicates a problem with how the API is called, not the API itself.
+- `notmatching`: No photo on iNaturalist was found that matched the Commons file. That usually means the Commons file has been modified or the URL is wrong.
+- `sha1`: The Commons file was matched to an iNaturalist photo using a SHA-1 hash. Errors with this reason typically indicate a problem comparing the licenses.
+- `ssim`: The Commons file was matched to an iNaturalist photo based on an SSIM score. That score will be included in the reason.
