@@ -172,7 +172,17 @@ def test_files_to_check():
                 "https://www.inaturalist.org/photos/12345",
                 "https://www.inaturalist.org/observations/example",
             ],
-            (None, id_tuple(id="12345", type="photos"),),
+            (None, id_tuple(id="12345", type="photos")),
+        ),
+        (
+            [
+                "https://portugal.inaturalist.org/photos/12345",
+                "https://portugal.inaturalist.org/observations/15059501",
+            ],
+            (
+                id_tuple(id="15059501", type="observations"),
+                id_tuple(id="12345", type="photos"),
+            ),
         ),
     ],
 )
