@@ -172,11 +172,8 @@ def test_files_to_check():
                 "https://www.inaturalist.org/photos/12345",
                 "https://www.inaturalist.org/observations/example",
             ],
-            (
-                None,
-                id_tuple(id="12345", type="photos"),
-            ),
-        )
+            (None, id_tuple(id="12345", type="photos"),),
+        ),
     ],
 )
 def test_find_ina_id(extlinks, expected):
