@@ -41,7 +41,7 @@ from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
 import utils
 
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(
@@ -153,18 +153,16 @@ def parse_ina_url(raw_url: str) -> Optional[iNaturalistID]:
     """Parses an iNaturalist URL into an iNaturalistID named tuple"""
     url = urllib.parse.urlparse(raw_url)
     path = url.path.split(sep="/")
-    if len(path) == 3 and (
-        url.netloc.lower().endswith("inaturalist.org")
-        or url.netloc.lower()
-        in (
-            "www.naturalista.mx",
-            "www.argentinat.org",
-            "inaturalist.ala.org.au",
-            "www.biodiversity4all.org",
-            "www.inaturalist.ca",
-            "www.inaturalist.nz",
-            "inaturalist.laji.fi",
-        )
+    netloc = url.netloc.lower().replace("www.", "")
+    if len(path) == 3 and netloc in (
+        "inaturalist.org",
+        "naturalista.mx",
+        "argentinat.org",
+        "inaturalist.ala.org.au",
+        "biodiversity4all.org",
+        "inaturalist.ca",
+        "inaturalist.nz",
+        "inaturalist.laji.fi",
     ):
         return iNaturalistID(type=path[1], id=str(path[2]))
     else:
