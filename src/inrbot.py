@@ -41,7 +41,7 @@ from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
 import utils
 
-__version__ = "1.1.1"
+__version__ = "1.1.2"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(
@@ -719,10 +719,12 @@ def review_file(
 
     except ProcessingError as err:
         logger.info("Processing failed:", exc_info=err)
-        kwargs = dict(status="error", reason=err.reason_code, throttle=throttle,)
+        status = "error"
+        kwargs = dict(status=status, reason=err.reason_code, throttle=throttle,)
     except Exception as err:
         logger.exception(err)
-        kwargs = dict(status="error", reason=repr(err), throttle=throttle,)
+        status = "error"
+        kwargs = dict(status=status, reason=err.reason_code, throttle=throttle,)
     else:
         kwargs = dict(
             photo_id=photo_id,
