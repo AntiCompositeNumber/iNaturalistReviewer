@@ -41,7 +41,7 @@ from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
 import utils
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(
@@ -735,12 +735,12 @@ def review_file(
             throttle=throttle,
             archive=archive,
         )
-    finally:
-        reviewed = update_review(page, **kwargs)
-        if status == "fail" and reviewed:
-            fail_warning(page, ina_license, is_old)
 
-        return reviewed
+    reviewed = update_review(page, **kwargs)
+    if status == "fail" and reviewed:
+        fail_warning(page, ina_license, is_old)
+
+    return reviewed
 
 
 def main(
