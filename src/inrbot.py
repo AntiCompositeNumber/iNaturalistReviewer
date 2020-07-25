@@ -724,7 +724,7 @@ def review_file(
     except Exception as err:
         logger.exception(err)
         status = "error"
-        kwargs = dict(status=status, reason=err.reason_code, throttle=throttle,)
+        kwargs = dict(status=status, reason=repr(err), throttle=throttle,)
     else:
         kwargs = dict(
             photo_id=photo_id,
