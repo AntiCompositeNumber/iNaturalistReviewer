@@ -174,6 +174,8 @@ def parse_ina_url(raw_url: str) -> Optional[iNaturalistID]:
         )
     ):
         return iNaturalistID(type=path[1], id=str(path[2]))
+    elif len(path) == 4 and netloc == "static.inaturalist.org":
+        return iNaturalistID(type=path[1], id=str(path[2]))
     else:
         return None
 
