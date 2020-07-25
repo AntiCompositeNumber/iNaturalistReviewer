@@ -719,18 +719,10 @@ def review_file(
 
     except ProcessingError as err:
         logger.info("Processing failed:", exc_info=err)
-        kwargs = dict(
-            status="error",
-            reason=err.reason_code,
-            throttle=throttle,
-        )
+        kwargs = dict(status="error", reason=err.reason_code, throttle=throttle,)
     except Exception as err:
         logger.exception(err)
-        kwargs = dict(
-            status="error",
-            reason=repr(err),
-            throttle=throttle,
-        )
+        kwargs = dict(status="error", reason=repr(err), throttle=throttle,)
     else:
         kwargs = dict(
             photo_id=photo_id,
