@@ -131,8 +131,6 @@ def test_files_to_check():
             ],
             (id_tuple(id="15059501", type="observations"), None),
         ),
-        (["http://example.com"], (None, None)),
-        ([], (None, None)),
         (
             [
                 "https://www.inaturalist.org/photos/12345",
@@ -193,6 +191,14 @@ def test_find_ina_id(extlinks, expected):
     assert ina_id == expected
 
 
+@pytest.mark.parametrize("extlinks", [["http://example.com"], []])
+def test_find_ina_id_fail(extlinks):
+    page = mock.MagicMock()
+    page.extlinks.return_value = extlinks
+    with pytest.raises(inrbot.ProcessingError, match="nourl"):
+        inrbot.find_ina_id(page)
+
+
 @pytest.mark.ext_web
 def test_get_ina_data_observation():
     ina_id = id_tuple(id="36885889", type="observations")
@@ -203,8 +209,8 @@ def test_get_ina_data_observation():
 
 def test_get_ina_data_wrong_endpoint():
     ina_id = id_tuple(id="anticompositenumber", type="people")
-    response = inrbot.get_ina_data(ina_id)
-    assert response is None
+    with pytest.raises(inrbot.ProcessingError, match="apierr"):
+        inrbot.get_ina_data(ina_id)
 
 
 def test_get_ina_data_bad_data():
@@ -212,9 +218,8 @@ def test_get_ina_data_bad_data():
     mock_session = mock.MagicMock()
     mock_session.get.return_value.json.return_value = {"total_results": 1}
     with mock.patch("inrbot.session", mock_session):
-        response = inrbot.get_ina_data(ina_id)
-
-    assert response is None
+        with pytest.raises(inrbot.ProcessingError, match="apierr"):
+            inrbot.get_ina_data(ina_id)
 
 
 def test_get_ina_data_wrong_number():
@@ -222,9 +227,8 @@ def test_get_ina_data_wrong_number():
     mock_session = mock.MagicMock()
     mock_session.get.return_value.json.return_value = {"total_results": 2}
     with mock.patch("inrbot.session", mock_session):
-        response = inrbot.get_ina_data(ina_id)
-
-    assert response is None
+        with pytest.raises(inrbot.ProcessingError, match="apierr"):
+            inrbot.get_ina_data(ina_id)
 
 
 def test_get_ina_data_error():
@@ -232,9 +236,8 @@ def test_get_ina_data_error():
     mock_session = mock.MagicMock()
     mock_session.get.side_effect = requests.exceptions.HTTPError
     with mock.patch("inrbot.session", mock_session):
-        response = inrbot.get_ina_data(ina_id)
-
-    assert response is None
+        with pytest.raises(inrbot.ProcessingError, match="apierr"):
+            inrbot.get_ina_data(ina_id)
 
 
 @pytest.mark.ext_web
@@ -280,10 +283,8 @@ def test_find_photo_in_obs_ssim_fail():
     inrbot.compute_ssim = compute_ssim
     with mock.patch("inrbot.compare_photo_hashes", return_value=False):
         with mock.patch.dict("inrbot.config", mock_config):
-            photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
-
-    assert found == "notmatching"
-    assert photo is None
+            with pytest.raises(inrbot.ProcessingError, match="notmatching"):
+                inrbot.find_photo_in_obs(page, obs_id, ina_data)
 
 
 def test_find_photo_in_obs_notfound():
@@ -291,9 +292,8 @@ def test_find_photo_in_obs_notfound():
     obs_id = mock.MagicMock()
     ina_data = {"photos": []}
 
-    photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
-    assert photo is None
-    assert found == "notfound"
+    with pytest.raises(inrbot.ProcessingError, match="notfound"):
+        inrbot.find_photo_in_obs(page, obs_id, ina_data)
 
 
 @pytest.mark.ext_web
@@ -303,9 +303,8 @@ def test_find_photo_in_obs_notmatching():
     obs_id = id_tuple(id="36885821", type="observations")
     ina_data = inrbot.get_ina_data(obs_id)
 
-    photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
-    assert photo is None
-    assert found == "notmatching"
+    with pytest.raises(inrbot.ProcessingError, match="notmatching"):
+        inrbot.find_photo_in_obs(page, obs_id, ina_data)
 
 
 @pytest.mark.ext_web
@@ -319,9 +318,10 @@ def test_find_photo_in_obs_ignore():
 
     with mock.patch.dict("inrbot.config", mock_config):
         with mock.patch("inrbot.compare_photo_hashes", mock_compare):
-            photo, found = inrbot.find_photo_in_obs(
-                page, obs_id, ina_data, raw_photo_id=photo_id
-            )
+            with pytest.raises(inrbot.ProcessingError):
+                photo, found = inrbot.find_photo_in_obs(
+                    page, obs_id, ina_data, raw_photo_id=photo_id
+                )
     assert mock_compare.call_count == 3
 
 
@@ -335,9 +335,10 @@ def test_find_photo_in_obs_photo():
 
     with mock.patch.dict("inrbot.config", mock_config):
         with mock.patch("inrbot.compare_photo_hashes", mock_compare):
-            photo, found = inrbot.find_photo_in_obs(
-                page, obs_id, ina_data, raw_photo_id=photo_id
-            )
+            with pytest.raises(inrbot.ProcessingError):
+                photo, found = inrbot.find_photo_in_obs(
+                    page, obs_id, ina_data, raw_photo_id=photo_id
+                )
     assert mock_compare.call_count == 1
 
 
@@ -352,7 +353,8 @@ def test_find_ina_license_fail():
     with open(test_data_dir + "/ina_response.json") as f:
         ina_data = json.load(f)
     photo = id_tuple(id="12345", type="photos")
-    assert inrbot.find_ina_license(ina_data, photo) == ""
+    with pytest.raises(inrbot.ProcessingError, match="inatlicense"):
+        inrbot.find_ina_license(ina_data, photo)
 
 
 def test_find_ina_author():
@@ -371,8 +373,8 @@ def test_find_com_license_found():
 def test_find_com_license_none():
     site = pywikibot.Site("commons", "commons")
     page = pywikibot.Page(site, "COM:PCP")
-    license = inrbot.find_com_license(page)
-    assert license == ""
+    with pytest.raises(inrbot.ProcessingError, match="comlicense"):
+        inrbot.find_com_license(page)
 
 
 def test_check_licenses_pass():

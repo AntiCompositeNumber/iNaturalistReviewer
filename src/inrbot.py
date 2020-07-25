@@ -41,7 +41,7 @@ from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
 
 import utils
 
-__version__ = "1.0.6"
+__version__ = "1.1.0"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(
@@ -83,6 +83,12 @@ class iNaturalistID(NamedTuple):
 
 class RestartBot(RuntimeError):
     pass
+
+
+class ProcessingError(Exception):
+    def __init__(self, reason_code, description=""):
+        self.reason_code = reason_code
+        self.description = description
 
 
 def get_config() -> Tuple[dict, datetime.datetime]:
@@ -146,7 +152,7 @@ def find_ina_id(
     elif photos:
         return None, photos.pop()
     else:
-        return None, None
+        raise ProcessingError("nourl", "No observation ID could be found")
 
 
 def parse_ina_url(raw_url: str) -> Optional[iNaturalistID]:
@@ -174,7 +180,7 @@ def parse_ina_url(raw_url: str) -> Optional[iNaturalistID]:
 
 def get_ina_data(
     ina_id: iNaturalistID, throttle: Optional[utils.Throttle] = None
-) -> Optional[dict]:
+) -> dict:
     """Make API request to iNaturalist from an ID and ID type
 
     Returns a dict of the API result
@@ -182,7 +188,7 @@ def get_ina_data(
     if ina_id.type == "observations":
         url = f"https://api.inaturalist.org/v1/observations/{ina_id.id}"
     else:
-        return None
+        raise ProcessingError("apierr", "iNaturalist ID is wrong type")
 
     if throttle:
         throttle.throttle()
@@ -190,12 +196,15 @@ def get_ina_data(
         response = session.get(url, headers={"Accept": "application/json"})
         response.raise_for_status()
         response_json = response.json()
-    except (ValueError, requests.exceptions.HTTPError):
-        return None
+    except (ValueError, requests.exceptions.HTTPError) as err:
+        raise ProcessingError("apierr", "iNaturalist API error") from err
     else:
         if response_json.get("total_results") != 1:
-            return None
-        return response_json.get("results", [None])[0]
+            raise ProcessingError("apierr", "iNaturalist API error")
+        res = response_json.get("results", [None])[0]
+        if not res:
+            raise ProcessingError("apierr", "No data recieved from iNaturalist")
+        return res
 
 
 def find_photo_in_obs(
@@ -204,7 +213,7 @@ def find_photo_in_obs(
     ina_data: dict,
     raw_photo_id: Optional[iNaturalistID] = None,
     throttle: Optional[utils.Throttle] = None,
-) -> Tuple[Optional[iNaturalistID], str]:
+) -> Tuple[iNaturalistID, str]:
     """Find the matching image in an iNaturalist observation
 
     Returns an iNaturalistID named tuple with the photo ID.
@@ -214,7 +223,7 @@ def find_photo_in_obs(
         for photo in ina_data["photos"]
     ]
     if len(photos) < 1:
-        return None, "notfound"
+        raise ProcessingError("notfound", "No photos in observation")
     if raw_photo_id and raw_photo_id not in photos:
         raw_photo_id = None
     elif raw_photo_id:
@@ -244,7 +253,7 @@ def find_photo_in_obs(
                 if throttle:
                     throttle.throttle()
 
-    return None, "notmatching"
+    raise ProcessingError("notmatching", "No matching photos found")
 
 
 def compare_photo_hashes(page: pywikibot.FilePage, photo: iNaturalistID) -> bool:
@@ -357,12 +366,15 @@ def find_ina_license(ina_data: dict, photo: iNaturalistID) -> str:
             license_code = photo_data.get("license_code", "null")
             break
     else:
-        return ""
+        raise ProcessingError("inatlicense", "No iNaturalist license found")
 
     if not license_code:
         license_code = "null"
 
-    return licenses.get(license_code, "")
+    try:
+        return licenses[license_code]
+    except KeyError as e:
+        raise ProcessingError("inatlicense", "No iNaturalist license found") from e
 
 
 def find_ina_author(ina_data: dict) -> str:
@@ -385,7 +397,7 @@ def find_com_license(page: pywikibot.page.BasePage) -> str:
         if template in category.members(namespaces=10):
             return template.title(with_ns=False)
     else:
-        return ""
+        raise ProcessingError("comlicense", "No Commons license found")
 
 
 def check_licenses(ina_license: str, com_license: str) -> str:
@@ -598,14 +610,17 @@ def fail_warning(
         logger.info(message)
 
 
-def get_observation_from_photo(photo_id: iNaturalistID) -> Optional[iNaturalistID]:
+def get_observation_from_photo(photo_id: iNaturalistID) -> iNaturalistID:
     assert photo_id.type == "photos"
-    res = session.get(str(photo_id))
-    res.raise_for_status()
+    try:
+        res = session.get(str(photo_id))
+        res.raise_for_status()
+    except Exception:
+        raise ProcessingError("nourl", "No observation ID could be found")
     # Yes, I know I'm parsing HTML with a regex.
     match = re.search(r"/observations/(\d*)\"", res.text)
     if not match:
-        return None
+        raise ProcessingError("nourl", "No observation ID could be found")
     else:
         return iNaturalistID(type="observations", id=match.group(1))
 
@@ -654,69 +669,63 @@ def review_file(
     if not check_can_run(page):
         return None
 
-    raw_obs_id, raw_photo_id = find_ina_id(page)
-    logger.info(f"ID found in wikitext: {raw_obs_id} {raw_photo_id}")
-    if raw_photo_id and not raw_obs_id:
-        raw_obs_id = get_observation_from_photo(raw_photo_id)
+    #####
+    try:
+        raw_obs_id, raw_photo_id = find_ina_id(page)
+        logger.info(f"ID found in wikitext: {raw_obs_id} {raw_photo_id}")
+        if raw_photo_id and not raw_obs_id:
+            raw_obs_id = get_observation_from_photo(raw_photo_id)
+        assert raw_obs_id
 
-    if not raw_obs_id:
-        logger.info("No observation ID could be found")
-        update_review(page, status="error", reason="url", throttle=throttle)
-        return False
+        ina_throttle = utils.Throttle(10)
+        ina_data = get_ina_data(raw_obs_id, ina_throttle)
 
-    ina_throttle = utils.Throttle(10)
-    ina_data = get_ina_data(raw_obs_id, ina_throttle)
+        photo_id, found = find_photo_in_obs(
+            page, raw_obs_id, ina_data, raw_photo_id, ina_throttle
+        )
 
-    if not ina_data:
-        logger.warning("No data retrieved from iNaturalist!")
-        update_review(page, status="error", reason="nodata", throttle=throttle)
-        return False
+        ina_license = find_ina_license(ina_data, photo_id)
+        logger.debug(f"iNaturalist License: {ina_license}")
+        ina_author = find_ina_author(ina_data)
+        logger.debug(f"Author: {ina_author}")
 
-    photo_id, found = find_photo_in_obs(
-        page, raw_obs_id, ina_data, raw_photo_id, ina_throttle
-    )
-    if photo_id is None:
-        logger.info(f"Images did not match: {found}")
-        update_review(page, status="error", reason=found, throttle=throttle)
-        return False
+        com_license = find_com_license(page)
+        logger.debug(f"Commons License: {com_license}")
+        status = check_licenses(ina_license, com_license)
+        if status == "fail":
+            is_old = file_is_old(page)
+        else:
+            is_old = False
+
+        if config["use_wayback"] and status in ("pass", "pass-change"):
+            archive = get_archive(photo_id)
+        else:
+            archive = ""
+
+    except ProcessingError as err:
+        logger.info("Processing failed:", exc_info=err)
+        kwargs = dict(status="error", reason=err.reason_code, throttle=throttle,)
+    except Exception as err:
+        logger.exception(err)
+        kwargs = dict(status="error", reason=repr(err), throttle=throttle,)
     else:
-        assert isinstance(photo_id, iNaturalistID)
+        kwargs = dict(
+            photo_id=photo_id,
+            status=status,
+            author=ina_author,
+            review_license=ina_license,
+            upload_license=com_license,
+            reason=found,
+            is_old=is_old,
+            throttle=throttle,
+            archive=archive,
+        )
+    finally:
+        reviewed = update_review(page, **kwargs)
+        if status == "fail" and reviewed:
+            fail_warning(page, ina_license, is_old)
 
-    ina_license = find_ina_license(ina_data, photo_id)
-    logger.debug(f"iNaturalist License: {ina_license}")
-    ina_author = find_ina_author(ina_data)
-    logger.debug(f"Author: {ina_author}")
-
-    com_license = find_com_license(page)
-    logger.debug(f"Commons License: {com_license}")
-    status = check_licenses(ina_license, com_license)
-
-    if status == "fail":
-        is_old = file_is_old(page)
-    else:
-        is_old = False
-
-    if config["use_wayback"] and status in ("pass", "pass-change"):
-        archive = get_archive(photo_id)
-    else:
-        archive = ""
-
-    reviewed = update_review(
-        page,
-        photo_id,
-        status=status,
-        author=ina_author,
-        review_license=ina_license,
-        upload_license=com_license,
-        reason=found,
-        is_old=is_old,
-        throttle=throttle,
-        archive=archive,
-    )
-    if status == "fail" and reviewed:
-        fail_warning(page, ina_license, is_old)
-
-    return reviewed
+        return reviewed
 
 
 def main(
