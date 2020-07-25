@@ -648,6 +648,15 @@ def get_archive(photo_id: iNaturalistID) -> str:
     return archive
 
 
+def get_old_archive(photo_id: iNaturalistID) -> str:
+    try:
+        archive = waybackpy.Url(str(photo_id), user_agent).oldest()
+    except Exception as err:
+        logger.warn("Failed to get archive", exc_info=err)
+        archive = ""
+    return archive
+
+
 def review_file(
     inpage: pywikibot.page.BasePage, throttle: Optional[utils.Throttle] = None
 ) -> Optional[bool]:
@@ -699,15 +708,27 @@ def review_file(
 
         if config["use_wayback"] and status in ("pass", "pass-change"):
             archive = get_archive(photo_id)
+        elif status == "fail":
+            archive = get_old_archive(photo_id)
+            if archive:
+                status = "fail-archive"
         else:
             archive = ""
 
     except ProcessingError as err:
         logger.info("Processing failed:", exc_info=err)
-        kwargs = dict(status="error", reason=err.reason_code, throttle=throttle,)
+        kwargs = dict(
+            status="error",
+            reason=err.reason_code,
+            throttle=throttle,
+        )
     except Exception as err:
         logger.exception(err)
-        kwargs = dict(status="error", reason=repr(err), throttle=throttle,)
+        kwargs = dict(
+            status="error",
+            reason=repr(err),
+            throttle=throttle,
+        )
     else:
         kwargs = dict(
             photo_id=photo_id,
