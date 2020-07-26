@@ -30,7 +30,7 @@ import urllib.parse
 from hmac import compare_digest
 from io import BytesIO
 
-import imagehash
+import imagehash  # type: ignore
 import mwparserfromhell as mwph  # type: ignore
 import pywikibot  # type: ignore
 import pywikibot.pagegenerators as pagegenerators  # type: ignore
@@ -228,6 +228,10 @@ class Image:
         if not self._phash:
             self._phash = imagehash.phash(self.image)
         return self._phash
+
+    @property
+    def image(self):
+        raise NotImplementedError
 
 
 class iNaturalistImage(Image):
