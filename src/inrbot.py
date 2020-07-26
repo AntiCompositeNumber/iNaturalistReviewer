@@ -337,7 +337,7 @@ def compare_images(
     elif method == "phash":
         diff = com_img.phash - ina_img.phash
         logger.debug(f"PHash Hamming distance: {diff}")
-        return diff < 4
+        return diff < config.get("max_phash_dist", 4)
     else:
         raise ValueError
 
