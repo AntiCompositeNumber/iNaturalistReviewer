@@ -14,13 +14,10 @@ certifi==2020.6.20
 chardet==3.0.4
 idna==2.10
 mwparserfromhell==0.5.4
-numpy==1.19.0
 oauthlib==3.1.0
 pillow==7.2.0
-pyssim==0.4
 pywikibot
 requests-oauthlib==1.3.0
 requests==2.24.0
-scipy==1.5.1
-urllib3==1.25.9
-waybackpy==2.1.2
+urllib3==1.25.10
+waybackpy==2.1.6

@@ -239,22 +239,6 @@ def find_photo_in_obs(
         if throttle:
             throttle.throttle()
 
-    if config["use_ssim"]:
-        # Hash check failed, use SSIM instead
-        logger.debug("Hash check failed, checking SSIM scores")
-        try:
-            orig = get_commons_image(page)
-        except Exception:
-            pass
-        else:
-            for photo in photos:
-                logger.debug(f"Current photo: {photo}")
-                res, ssim = compare_ssim(orig, photo)
-                if res:
-                    return photo, f"ssim: {ssim:.4}"
-                if throttle:
-                    throttle.throttle()
-
     raise ProcessingError("notmatching", "No matching photos found")
 
 
@@ -331,25 +315,6 @@ def bytes_throttle(length: int) -> None:
     logger.info(f"Sleeping for {sleep_time} seconds")
     time.sleep(sleep_time)
     return None
-
-
-def compare_ssim(
-    orig: Image, photo: iNaturalistID, min_ssim: float = 0.0
-) -> Tuple[bool, float]:
-    """Compares an iNaturalist photo to the Commons file using an SSIM score"""
-    if not min_ssim:
-        min_ssim = config.get("min_ssim", 0.9)
-    assert min_ssim > 0 and min_ssim < 1
-    try:
-        image = utils.retry(get_ina_image, 3, photo=photo)
-    except Exception as err:
-        logger.exception(err)
-        return False, 0.0
-    ina_image = Image.open(BytesIO(image))
-
-    ssim = compute_ssim(orig, ina_image)
-    logger.debug(f"SSIM value: {ssim}")
-    return (ssim > min_ssim, ssim)
 
 
 def find_ina_license(ina_data: dict, photo: iNaturalistID) -> str:
@@ -798,11 +763,6 @@ def main(
 
 
 config, conf_ts = get_config()
-if config["use_ssim"]:
-    logging.info("Importing pyssim")
-    from ssim import compute_ssim  # type: ignore
-
-    logging.info("Import complete")
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Review files from iNaturalist on Commons",

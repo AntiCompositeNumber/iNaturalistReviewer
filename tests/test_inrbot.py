@@ -259,41 +259,6 @@ def test_find_photo_in_obs():
     assert photo._replace(url="") == id_tuple(id="58381754", type="photos")
 
 
-@pytest.mark.ext_web
-def test_find_photo_in_obs_ssim_pass():
-    page = pywikibot.FilePage(inrbot.site, "File:Acomys subspinosus 15087534.jpg")
-    obs_id = id_tuple(id="10783720", type="observations")
-    ina_data = inrbot.get_ina_data(obs_id)
-    mock_config = {"use_ssim": True}
-    from ssim import compute_ssim
-
-    inrbot.compute_ssim = compute_ssim
-    with mock.patch("inrbot.compare_photo_hashes", return_value=False):
-        with mock.patch.dict("inrbot.config", mock_config):
-            photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
-
-    assert found.startswith("ssim")
-    assert photo._replace(url="") == id_tuple(id="15087534", type="photos")
-
-
-@pytest.mark.ext_web
-def test_find_photo_in_obs_ssim_fail():
-    page = pywikibot.FilePage(inrbot.site, "File:Acomys subspinosus 15087534.jpg")
-    obs_id = id_tuple(id="10783720", type="observations")
-    ina_data = inrbot.get_ina_data(obs_id)
-    thumb_url = page.get_file_url(url_width=340)
-    mock_url = mock.Mock(return_value=thumb_url)
-    page.get_file_url = mock_url
-    mock_config = {"use_ssim": True}
-    from ssim import compute_ssim
-
-    inrbot.compute_ssim = compute_ssim
-    with mock.patch("inrbot.compare_photo_hashes", return_value=False):
-        with mock.patch.dict("inrbot.config", mock_config):
-            with pytest.raises(inrbot.ProcessingError, match="notmatching"):
-                inrbot.find_photo_in_obs(page, obs_id, ina_data)
-
-
 def test_find_photo_in_obs_notfound():
     page = mock.MagicMock()
     obs_id = mock.MagicMock()
