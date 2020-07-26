@@ -42,7 +42,7 @@ from typing import NamedTuple, Optional, Set, Tuple, Dict, Union, cast
 
 import utils
 
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(
@@ -835,7 +835,8 @@ def main(
                     running = False
                     logger.warning("Out of pages to check!")
                 # May need to adjust this number depending on load
-                time.sleep(300)
+                else:
+                    time.sleep(300)
 
 
 config, conf_ts = get_config()
