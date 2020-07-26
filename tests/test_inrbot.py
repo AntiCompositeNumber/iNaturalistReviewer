@@ -257,30 +257,30 @@ def test_find_photo_in_obs_notfound():
 
 
 @pytest.mark.ext_web
-def test_find_photo_in_obs_sha1():
-    page = mock.MagicMock()
-    page.latest_file_info.sha1 = "a80ef8a886c3deeeded624856fb83d269dda1683"
+@pytest.mark.parametrize("method", ["sha1", "phash"])
+def test_find_photo_in_obs_notmatching(method):
+    page = pywikibot.FilePage(inrbot.site, "File:Ladona julia at Spectacle Pond.jpg")
     obs_id = id_tuple(id="36885821", type="observations")
     ina_data = inrbot.get_ina_data(obs_id)
-    mock_config = {"compare_methods": ["sha1"]}
-
-    with mock.patch.dict("inrbot.config", mock_config):
-        photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
-    assert found == "sha1"
-    assert photo._replace(url="") == id_tuple(id="58381754", type="photos")
-
-
-@pytest.mark.ext_web
-def test_find_photo_in_obs_sha1_notmatching():
-    page = mock.MagicMock()
-    page.latest_file_info.sha1 = "foo"
-    obs_id = id_tuple(id="36885821", type="observations")
-    ina_data = inrbot.get_ina_data(obs_id)
-    mock_config = {"compare_methods": ["sha1"]}
+    mock_config = {"compare_methods": [method]}
 
     with mock.patch.dict("inrbot.config", mock_config):
         with pytest.raises(inrbot.ProcessingError, match="notmatching"):
             inrbot.find_photo_in_obs(page, obs_id, ina_data)
+
+
+@pytest.mark.ext_web
+@pytest.mark.parametrize("method", ["sha1", "phash"])
+def test_find_photo_in_obs_pass(method):
+    page = pywikibot.FilePage(inrbot.site, "File:Ladona julia at Spectacle Pond.jpg")
+    obs_id = id_tuple(id="36885889", type="observations")
+    ina_data = inrbot.get_ina_data(obs_id)
+    mock_config = {"compare_methods": [method]}
+
+    with mock.patch.dict("inrbot.config", mock_config):
+        photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
+    assert found.startswith(method)
+    assert photo._replace(url="") == id_tuple(id="58596675", type="photos")
 
 
 @pytest.mark.ext_web

@@ -30,6 +30,7 @@ import urllib.parse
 from hmac import compare_digest
 from io import BytesIO
 
+import imagehash
 import mwparserfromhell as mwph  # type: ignore
 import pywikibot  # type: ignore
 import pywikibot.pagegenerators as pagegenerators  # type: ignore
@@ -215,12 +216,18 @@ class Image:
         raw: Optional[bytes] = None,
         image: Optional[PIL.Image.Image] = None,
         sha1: str = "",
-        phash: None = None,
+        phash: Optional[imagehash.ImageHash] = None,
     ):
         self._raw = raw
         self._image = image
         self._sha1 = sha1
         self._phash = phash
+
+    @property
+    def phash(self) -> imagehash.ImageHash:
+        if not self._phash:
+            self._phash = imagehash.phash(self.image)
+        return self._phash
 
 
 class iNaturalistImage(Image):
@@ -248,10 +255,6 @@ class iNaturalistImage(Image):
             self._sha1 = sha1sum.hexdigest()
         return self._sha1
 
-    @property
-    def phash(self):
-        return NotImplemented
-
 
 class CommonsImage(Image):
     def __init__(self, page: pywikibot.FilePage, **kwargs):
@@ -277,10 +280,6 @@ class CommonsImage(Image):
         if not self._sha1:
             self._sha1 = self.page.latest_file_info.sha1
         return self._sha1
-
-    @property
-    def phash(self):
-        return NotImplemented
 
 
 def find_photo_in_obs(
@@ -332,7 +331,9 @@ def compare_images(
         return compare_digest(com_img.sha1, ina_img.sha1)
 
     elif method == "phash":
-        return False
+        diff = com_img.phash - ina_img.phash
+        logger.debug(f"PHash Hamming distance: {diff}")
+        return diff < 4
     else:
         raise ValueError
 
