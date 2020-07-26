@@ -13,11 +13,12 @@ black = "*"
 
 [packages]
 requests = "*"
-pywikibot = {git = "https://phabricator.wikimedia.org/diffusion/PWBC/pywikibot.git"}
+pywikibot = "*"
 requests-oauthlib = "*"
 mwparserfromhell = "*"
 pillow = "*"
 waybackpy = "*"
+imagehash = "*"
 
 [requires]
 python_version = "3.7"

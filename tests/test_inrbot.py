@@ -247,18 +247,6 @@ def test_get_ina_data_error():
             inrbot.get_ina_data(ina_id)
 
 
-@pytest.mark.ext_web
-def test_find_photo_in_obs():
-    page = mock.MagicMock()
-    page.latest_file_info.sha1 = "a80ef8a886c3deeeded624856fb83d269dda1683"
-    obs_id = id_tuple(id="36885821", type="observations")
-    ina_data = inrbot.get_ina_data(obs_id)
-
-    photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
-    assert found == "sha1"
-    assert photo._replace(url="") == id_tuple(id="58381754", type="photos")
-
-
 def test_find_photo_in_obs_notfound():
     page = mock.MagicMock()
     obs_id = mock.MagicMock()
@@ -269,27 +257,44 @@ def test_find_photo_in_obs_notfound():
 
 
 @pytest.mark.ext_web
-def test_find_photo_in_obs_notmatching():
-    page = mock.MagicMock()
-    page.latest_file_info.sha1 = "foo"
+@pytest.mark.parametrize("method", ["sha1", "phash"])
+def test_find_photo_in_obs_notmatching(method):
+    page = pywikibot.FilePage(inrbot.site, "File:Ladona julia at Spectacle Pond.jpg")
     obs_id = id_tuple(id="36885821", type="observations")
     ina_data = inrbot.get_ina_data(obs_id)
+    mock_config = {"compare_methods": [method]}
 
-    with pytest.raises(inrbot.ProcessingError, match="notmatching"):
-        inrbot.find_photo_in_obs(page, obs_id, ina_data)
+    with mock.patch.dict("inrbot.config", mock_config):
+        with pytest.raises(inrbot.ProcessingError, match="notmatching"):
+            inrbot.find_photo_in_obs(page, obs_id, ina_data)
+
+
+@pytest.mark.ext_web
+@pytest.mark.parametrize("method", ["sha1", "phash"])
+def test_find_photo_in_obs_pass(method):
+    page = pywikibot.FilePage(inrbot.site, "File:Ladona julia at Spectacle Pond.jpg")
+    obs_id = id_tuple(id="36885889", type="observations")
+    ina_data = inrbot.get_ina_data(obs_id)
+    mock_config = {"compare_methods": [method]}
+
+    with mock.patch.dict("inrbot.config", mock_config):
+        photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
+    assert found.startswith(method)
+    assert photo._replace(url="") == id_tuple(id="58596675", type="photos")
 
 
 @pytest.mark.ext_web
 def test_find_photo_in_obs_ignore():
+    """When raw_photo_id is not in the obs, ignore it"""
     page = mock.MagicMock()
     mock_compare = mock.Mock(return_value=False)
-    mock_config = {"use_ssim": False}
+    mock_config = {"compare_methods": ["sha1"]}
     obs_id = id_tuple(id="36885889", type="observations")
     photo_id = id_tuple(id="12345", type="photos")
     ina_data = inrbot.get_ina_data(obs_id)
 
     with mock.patch.dict("inrbot.config", mock_config):
-        with mock.patch("inrbot.compare_photo_hashes", mock_compare):
+        with mock.patch("inrbot.compare_images", mock_compare):
             with pytest.raises(inrbot.ProcessingError):
                 photo, found = inrbot.find_photo_in_obs(
                     page, obs_id, ina_data, raw_photo_id=photo_id
@@ -297,16 +302,18 @@ def test_find_photo_in_obs_ignore():
     assert mock_compare.call_count == 3
 
 
+@pytest.mark.ext_web
 def test_find_photo_in_obs_photo():
+    """When raw_photo_id is in the obs, other photos should be skipped"""
     page = mock.MagicMock()
     mock_compare = mock.Mock(return_value=False)
-    mock_config = {"use_ssim": False}
+    mock_config = {"compare_methods": ["sha1"]}
     obs_id = id_tuple(id="36885889", type="observations")
     photo_id = id_tuple(id="58596679", type="photos")
     ina_data = inrbot.get_ina_data(obs_id)
 
     with mock.patch.dict("inrbot.config", mock_config):
-        with mock.patch("inrbot.compare_photo_hashes", mock_compare):
+        with mock.patch("inrbot.compare_images", mock_compare):
             with pytest.raises(inrbot.ProcessingError):
                 photo, found = inrbot.find_photo_in_obs(
                     page, obs_id, ina_data, raw_photo_id=photo_id

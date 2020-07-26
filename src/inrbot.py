@@ -30,14 +30,15 @@ import urllib.parse
 from hmac import compare_digest
 from io import BytesIO
 
+import imagehash  # type: ignore
 import mwparserfromhell as mwph  # type: ignore
 import pywikibot  # type: ignore
 import pywikibot.pagegenerators as pagegenerators  # type: ignore
 import requests
-from PIL import Image  # type: ignore
+import PIL.Image  # type: ignore
 import waybackpy  # type: ignore
 
-from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
+from typing import NamedTuple, Optional, Set, Tuple, Dict, Union, cast
 
 import utils
 
@@ -209,6 +210,82 @@ def get_ina_data(
         return res
 
 
+class Image:
+    def __init__(
+        self,
+        raw: Optional[bytes] = None,
+        image: Optional[PIL.Image.Image] = None,
+        sha1: str = "",
+        phash: Optional[imagehash.ImageHash] = None,
+    ):
+        self._raw = raw
+        self._image = image
+        self._sha1 = sha1
+        self._phash = phash
+
+    @property
+    def phash(self) -> imagehash.ImageHash:
+        if not self._phash:
+            self._phash = imagehash.phash(self.image)
+        return self._phash
+
+    @property
+    def image(self):
+        raise NotImplementedError
+
+
+class iNaturalistImage(Image):
+    def __init__(self, id: iNaturalistID, **kwargs):
+        self.id = id
+        super().__init__(**kwargs)
+
+    @property
+    def raw(self) -> bytes:
+        if not self._raw:
+            self._raw = utils.retry(get_ina_image, 3, photo=self.id)
+        return cast(bytes, self._raw)
+
+    @property
+    def image(self) -> PIL.Image.Image:
+        if not self._image:
+            self._image = PIL.Image.open(BytesIO(self.raw))
+        return self._image
+
+    @property
+    def sha1(self) -> str:
+        if not self._sha1:
+            sha1sum = hashlib.sha1()
+            sha1sum.update(self.raw)
+            self._sha1 = sha1sum.hexdigest()
+        return self._sha1
+
+
+class CommonsImage(Image):
+    def __init__(self, page: pywikibot.FilePage, **kwargs):
+        self.page = page
+        super().__init__(**kwargs)
+
+    @property
+    def raw(self):
+        return NotImplemented
+
+    @property
+    def image(self) -> PIL.Image.Image:
+        """Download orignal Commons file and open as a PIL image"""
+        if not self._image:
+            url = self.page.get_file_url()
+            response = session.get(url)
+            response.raise_for_status()
+            self._image = PIL.Image.open(BytesIO(response.content))
+        return self._image
+
+    @property
+    def sha1(self) -> str:
+        if not self._sha1:
+            self._sha1 = self.page.latest_file_info.sha1
+        return self._sha1
+
+
 def find_photo_in_obs(
     page: pywikibot.FilePage,
     obs_id: iNaturalistID,
@@ -220,42 +297,49 @@ def find_photo_in_obs(
 
     Returns an iNaturalistID named tuple with the photo ID.
     """
-    photos = [
-        iNaturalistID(type="photos", id=str(photo["id"]), url=photo["url"])
+    images = [
+        iNaturalistImage(
+            id=iNaturalistID(type="photos", id=str(photo["id"]), url=photo["url"])
+        )
         for photo in ina_data["photos"]
     ]
-    if len(photos) < 1:
+    if len(images) < 1:
         raise ProcessingError("notfound", "No photos in observation")
-    if raw_photo_id and raw_photo_id not in photos:
-        raw_photo_id = None
     elif raw_photo_id:
-        photos = [photo_id for photo_id in photos if photo_id == raw_photo_id]
+        filt_images = [image for image in images if image.id == raw_photo_id]
+        if len(filt_images) > 0:
+            images = filt_images
 
-    logger.debug("Checking sha1 hashes")
-    for photo in photos:
-        logger.debug(f"Current photo: {photo}")
-        if compare_photo_hashes(page, photo):
-            return photo, "sha1"
-        if throttle:
-            throttle.throttle()
+    commons_image = CommonsImage(page=page)
+
+    for comp_method in config["compare_methods"]:
+        logger.debug(f"Comparing photos using {comp_method}")
+        for image in images:
+            try:
+                res = compare_images(comp_method, commons_image, image)
+            except Exception:
+                res = False
+            if res:
+                return image.id, comp_method
 
     raise ProcessingError("notmatching", "No matching photos found")
 
 
-def compare_photo_hashes(page: pywikibot.FilePage, photo: iNaturalistID) -> bool:
-    """Compares the photo on iNaturalist to the hash of the Commons file"""
-    sha1sum = hashlib.sha1()
-    try:
-        image = utils.retry(get_ina_image, 3, photo=photo)
-    except Exception as err:
-        logger.exception(err)
-        return False
-    sha1sum.update(image)
-    com_hash = page.latest_file_info.sha1
-    ina_hash = sha1sum.hexdigest()
-    logger.debug(f"Commons sha1sum:     {com_hash}")
-    logger.debug(f"iNaturalist sha1sum: {ina_hash}")
-    return compare_digest(com_hash, ina_hash)
+def compare_images(
+    method: str, com_img: CommonsImage, ina_img: iNaturalistImage
+) -> bool:
+    """Compares a CommonsImage to an iNaturalistImage"""
+    if method == "sha1":
+        logger.debug(f"Commons sha1sum:     {com_img.sha1}")
+        logger.debug(f"iNaturalist sha1sum: {ina_img.sha1}")
+        return compare_digest(com_img.sha1, ina_img.sha1)
+
+    elif method == "phash":
+        diff = com_img.phash - ina_img.phash
+        logger.debug(f"PHash Hamming distance: {diff}")
+        return diff < 4
+    else:
+        raise ValueError
 
 
 def get_ina_image(photo: iNaturalistID, final: bool = False) -> bytes:
@@ -270,14 +354,6 @@ def get_ina_image(photo: iNaturalistID, final: bool = False) -> bytes:
         return get_ina_image(photo._replace(url=url.replace("jpeg", "jpg")), final=True)
     response.raise_for_status()
     return response.content
-
-
-def get_commons_image(page: pywikibot.FilePage) -> Image.Image:
-    """Download orignal Commons file and open as a PIL image"""
-    url = page.get_file_url()
-    response = session.get(url)
-    response.raise_for_status()
-    return Image.open(BytesIO(response.content))
 
 
 def bytes_throttle(length: int) -> None:
