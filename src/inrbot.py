@@ -34,10 +34,10 @@ import mwparserfromhell as mwph  # type: ignore
 import pywikibot  # type: ignore
 import pywikibot.pagegenerators as pagegenerators  # type: ignore
 import requests
-import PIL.Image
+import PIL.Image  # type: ignore
 import waybackpy  # type: ignore
 
-from typing import NamedTuple, Optional, Set, Tuple, Dict, Union
+from typing import NamedTuple, Optional, Set, Tuple, Dict, Union, cast
 
 import utils
 
@@ -226,13 +226,13 @@ class Image:
 class iNaturalistImage(Image):
     def __init__(self, id: iNaturalistID, **kwargs):
         self.id = id
-        super().__init__(kwargs)
+        super().__init__(**kwargs)
 
     @property
     def raw(self) -> bytes:
         if not self._raw:
             self._raw = utils.retry(get_ina_image, 3, photo=self.id)
-        return self._raw
+        return cast(bytes, self._raw)
 
     @property
     def image(self) -> PIL.Image.Image:
@@ -256,7 +256,7 @@ class iNaturalistImage(Image):
 class CommonsImage(Image):
     def __init__(self, page: pywikibot.FilePage, **kwargs):
         self.page = page
-        super().__init__(kwargs)
+        super().__init__(**kwargs)
 
     @property
     def raw(self):
@@ -333,6 +333,8 @@ def compare_images(
 
     elif method == "phash":
         return False
+    else:
+        raise ValueError
 
 
 def get_ina_image(photo: iNaturalistID, final: bool = False) -> bytes:
