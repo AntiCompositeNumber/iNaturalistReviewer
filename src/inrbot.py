@@ -42,7 +42,7 @@ from typing import NamedTuple, Optional, Set, Tuple, Dict, Union, cast
 
 import utils
 
-__version__ = "1.2.1"
+__version__ = "1.2.2"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(
@@ -321,6 +321,8 @@ def find_photo_in_obs(
                 res = False
             if res:
                 return image.id, comp_method
+            elif throttle:
+                throttle.throttle()
 
     raise ProcessingError("notmatching", "No matching photos found")
 
@@ -337,7 +339,7 @@ def compare_images(
     elif method == "phash":
         diff = com_img.phash - ina_img.phash
         logger.debug(f"PHash Hamming distance: {diff}")
-        return diff < config.get("max_phash_dist", 4)
+        return diff <= config.get("max_phash_dist", 4)
     else:
         raise ValueError
 
