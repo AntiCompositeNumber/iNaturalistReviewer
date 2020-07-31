@@ -92,6 +92,11 @@ class ProcessingError(Exception):
         self.description = description
 
 
+class StopReview(Exception):
+    def __init__(self, reason):
+        self.reason = reason
+
+
 def get_config() -> Tuple[dict, datetime.datetime]:
     """Load on-wiki configuration"""
     page = pywikibot.Page(site, "User:iNaturalistReviewBot/config.json")
@@ -524,6 +529,7 @@ def update_review(
     is_old: bool = False,
     throttle: Optional[utils.Throttle] = None,
     archive: str = "",
+    no_del: bool = False,
 ) -> bool:
     """Updates the wikitext with the review status"""
     logger.info(f"Status: {status} ({reason})")
@@ -545,20 +551,21 @@ def update_review(
         changed = True
     if not changed:
         return False
+
     if status == "pass-change":
         aliases = Aliases(upload_license)
         for pt2 in code.ifilter_templates(matches=aliases.is_license):
             code.replace(pt2, ("{{%s}}" % review_license))
-    if status == "fail":
+    if status == "fail" and not no_del:
         code.insert(
             0,
             string.Template(
                 config["old_fail_tag"] if is_old else config["fail_tag"]
             ).safe_substitute(review_license=review_license),
         )
+
     if throttle is not None:
         throttle.throttle()
-
     try:
         save_page(page, str(code), status, review_license)
     except Exception as err:
@@ -578,6 +585,8 @@ def make_template(
     archive: str = "",
 ) -> str:
     """Constructs the iNaturalistReview template"""
+    if status == "stop":
+        return ""
     template = string.Template(config[status])
     text = template.safe_substitute(
         status=status,
@@ -702,6 +711,23 @@ def get_old_archive(photo_id: iNaturalistID) -> str:
     return archive
 
 
+def check_should_del(page: pywikibot.page.BasePage) -> bool:
+    page_templates = set(page.itertemplates())
+    check_templates = {
+        pywikibot.Page(site, "Template:OTRS received"),
+        pywikibot.Page(site, "Template:Deletion template tag"),
+    }
+    return not page_templates.isdisjoint(check_templates)
+
+
+def check_stop_cats(page: pywikibot.page.BasePage) -> None:
+    stop_cats = {pywikibot.Category(site, title) for title in config["stop_categories"]}
+    page_cats = set(page.categories())
+    page_stop = stop_cats & page_cats
+    if page_stop:
+        raise StopReview(page_stop)
+
+
 def review_file(
     inpage: pywikibot.page.BasePage, throttle: Optional[utils.Throttle] = None
 ) -> Optional[bool]:
@@ -725,6 +751,7 @@ def review_file(
 
     #####
     try:
+        check_stop_cats(page)
         raw_obs_id, raw_photo_id = find_ina_id(page)
         logger.info(f"ID found in wikitext: {raw_obs_id} {raw_photo_id}")
         if raw_photo_id and not raw_obs_id:
@@ -748,8 +775,10 @@ def review_file(
         status = check_licenses(ina_license, com_license)
         if status == "fail":
             is_old = file_is_old(page)
+            no_del = check_should_del(page)
         else:
             is_old = False
+            no_del = False
 
         if config["use_wayback"] and status in ("pass", "pass-change"):
             archive = get_archive(photo_id)
@@ -763,11 +792,15 @@ def review_file(
     except ProcessingError as err:
         logger.info("Processing failed:", exc_info=err)
         status = "error"
-        kwargs = dict(status=status, reason=err.reason_code, throttle=throttle,)
+        kwargs = dict(status=status, reason=err.reason_code, throttle=throttle)
+    except StopReview as err:
+        logger.info(f"Image already reviewed, contains {err.reason}")
+        status = "stop"
+        kwargs = dict(status=status, throttle=throttle)
     except Exception as err:
         logger.exception(err)
         status = "error"
-        kwargs = dict(status=status, reason=repr(err), throttle=throttle,)
+        kwargs = dict(status=status, reason=repr(err), throttle=throttle)
     else:
         kwargs = dict(
             photo_id=photo_id,
@@ -779,10 +812,11 @@ def review_file(
             is_old=is_old,
             throttle=throttle,
             archive=archive,
+            no_del=no_del,
         )
 
     reviewed = update_review(page, **kwargs)
-    if status == "fail" and reviewed:
+    if status == "fail" and reviewed and not no_del:
         fail_warning(page, ina_license, is_old)
 
     return reviewed
