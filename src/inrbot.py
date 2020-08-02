@@ -42,7 +42,7 @@ from typing import NamedTuple, Optional, Set, Tuple, Dict, Union, cast
 
 import utils
 
-__version__ = "1.2.2"
+__version__ = "1.2.3"
 username = "iNaturalistReviewBot"
 
 logging.config.dictConfig(
@@ -325,6 +325,7 @@ def find_photo_in_obs(
             except Exception:
                 res = False
             if res:
+                logger.info("Match found: {str(image.id)}")
                 return image.id, comp_method
             elif throttle:
                 throttle.throttle()
