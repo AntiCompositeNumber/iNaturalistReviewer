@@ -325,7 +325,7 @@ def find_photo_in_obs(
             except Exception:
                 res = False
             if res:
-                logger.info("Match found: {str(image.id)}")
+                logger.info(f"Match found: {str(image.id)}")
                 return image.id, comp_method
             elif throttle:
                 throttle.throttle()
