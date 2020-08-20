@@ -42,7 +42,7 @@ from typing import NamedTuple, Optional, Set, Tuple, Dict, Union, cast, Callable
 
 import utils
 
-__version__ = "1.3.0"
+__version__ = "1.3.1"
 
 logging.config.dictConfig(
     utils.logger_config("inrbot", level="VERBOSE", filename="inrbot.log")
@@ -113,6 +113,15 @@ def check_config():
     page = pywikibot.Page(site, "User:iNaturalistReviewBot/config.json")
     if conf_ts and page.editTime() > conf_ts:
         raise RestartBot("Configuration has been updated, bot will restart")
+
+
+def init_compare_methods():
+    global compare_methods
+    compare_methods = []
+    if "sha1" in config["compare_methods"]:
+        compare_methods.append(("sha1", compare_sha1))
+    if "phash" in config["compare_methods"]:
+        compare_methods.append(("phash", compare_phash))
 
 
 def check_can_run(page: pywikibot.page.BasePage) -> bool:
@@ -890,11 +899,7 @@ def main(
 
 
 config, conf_ts = get_config()
-if "sha1" in config["compare_methods"]:
-    compare_methods.append(("sha1", compare_sha1))
-if "phash" in config["compare_methods"]:
-    compare_methods.append(("phash", compare_phash))
-
+init_compare_methods()
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Review files from iNaturalist on Commons",

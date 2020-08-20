@@ -34,6 +34,7 @@ sys.path.append(os.path.realpath(_work_dir_ + "/../src"))
 import inrbot  # noqa: E402
 import utils  # noqa: E402
 
+inrbot.username = "iNaturalistReviewBot"
 test_data_dir = os.path.join(_work_dir_, "testdata")
 id_tuple = inrbot.iNaturalistID
 
@@ -265,6 +266,7 @@ def test_find_photo_in_obs_notmatching(method):
     mock_config = {"compare_methods": [method]}
 
     with mock.patch.dict("inrbot.config", mock_config):
+        inrbot.init_compare_methods()
         with pytest.raises(inrbot.ProcessingError, match="notmatching"):
             inrbot.find_photo_in_obs(page, obs_id, ina_data)
 
@@ -278,6 +280,7 @@ def test_find_photo_in_obs_pass(method):
     mock_config = {"compare_methods": [method]}
 
     with mock.patch.dict("inrbot.config", mock_config):
+        inrbot.init_compare_methods()
         photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
     assert found.startswith(method)
     assert photo._replace(url="") == id_tuple(id="58596675", type="photos")
@@ -288,17 +291,15 @@ def test_find_photo_in_obs_ignore():
     """When raw_photo_id is not in the obs, ignore it"""
     page = mock.MagicMock()
     mock_compare = mock.Mock(return_value=False)
-    mock_config = {"compare_methods": ["sha1"]}
     obs_id = id_tuple(id="36885889", type="observations")
     photo_id = id_tuple(id="12345", type="photos")
     ina_data = inrbot.get_ina_data(obs_id)
 
-    with mock.patch.dict("inrbot.config", mock_config):
-        with mock.patch("inrbot.compare_images", mock_compare):
-            with pytest.raises(inrbot.ProcessingError):
-                photo, found = inrbot.find_photo_in_obs(
-                    page, obs_id, ina_data, raw_photo_id=photo_id
-                )
+    inrbot.compare_methods = [("mock", mock_compare)]
+    with pytest.raises(inrbot.ProcessingError):
+        photo, found = inrbot.find_photo_in_obs(
+            page, obs_id, ina_data, raw_photo_id=photo_id
+        )
     assert mock_compare.call_count == 3
 
 
@@ -307,17 +308,15 @@ def test_find_photo_in_obs_photo():
     """When raw_photo_id is in the obs, other photos should be skipped"""
     page = mock.MagicMock()
     mock_compare = mock.Mock(return_value=False)
-    mock_config = {"compare_methods": ["sha1"]}
     obs_id = id_tuple(id="36885889", type="observations")
     photo_id = id_tuple(id="58596679", type="photos")
     ina_data = inrbot.get_ina_data(obs_id)
 
-    with mock.patch.dict("inrbot.config", mock_config):
-        with mock.patch("inrbot.compare_images", mock_compare):
-            with pytest.raises(inrbot.ProcessingError):
-                photo, found = inrbot.find_photo_in_obs(
-                    page, obs_id, ina_data, raw_photo_id=photo_id
-                )
+    inrbot.compare_methods = [("mock", mock_compare)]
+    with pytest.raises(inrbot.ProcessingError):
+        photo, found = inrbot.find_photo_in_obs(
+            page, obs_id, ina_data, raw_photo_id=photo_id
+        )
     assert mock_compare.call_count == 1
 
 
