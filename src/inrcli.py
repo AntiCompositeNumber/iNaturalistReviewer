@@ -18,13 +18,13 @@
 # limitations under the License.
 
 import click
-import pywikibot
-import pywikibot.bot
+import pywikibot  # type: ignore
+import pywikibot.bot  # type: ignore
 import logging
 import os
 import re
 import difflib
-from typing import Sequence, Dict
+from typing import Sequence, Dict, Optional
 
 os.environ["LOG_FILE"] = "stderr"
 
@@ -32,7 +32,7 @@ import inrbot  # noqa: E402
 
 site = inrbot.site
 logger = logging.getLogger("manual")
-ids: Dict[pywikibot.Page, inrbot.iNaturalistID] = {}
+ids: Dict[pywikibot.Page, Optional[inrbot.iNaturalistID]] = {}
 
 inrbot.config.update(
     {
@@ -122,6 +122,7 @@ def ask_url(
     if photos:
         print(f"Photo ID found: {str(photos[0])}")
     url = input(f"iNaturalist URL for {page.full_url()} (leave blank for no change): ")
+    # TODO: Add validation
     ina_id = inrbot.parse_ina_url(url)
     ids[page] = ina_id
     return ina_id
@@ -147,6 +148,7 @@ def main(target, url=""):
     else:
         page = pywikibot.FilePage(site, target)
         if url:
+            # TODO: Add validation
             ids[page] = inrbot.parse_ina_url(url)
         inrbot.review_file(page)
 
