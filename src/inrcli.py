@@ -138,7 +138,9 @@ def ask_compare(com_img: inrbot.CommonsImage, ina_img: inrbot.iNaturalistImage):
 @click.command()
 @click.argument("target")
 @click.option("--url")
-def main(target, url=""):
+@click.option("--simulate/--no-simulate")
+def main(target, url="", simulate=False):
+    inrbot.simulate = simulate
     if target == "auto":
         cat = pywikibot.Category(
             site, "Category:iNaturalist images needing human review"
