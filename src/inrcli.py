@@ -97,13 +97,13 @@ def pre_save(page, new_text, summary, status, review_license, **kwargs):
     )
     print("\n".join(diff))
     try:
-        choice = pywikibot.bot.input_yn("Save the page?", default=True)
-    except pywikibot.bot.QuitKeyboardInterrupt as e:
+        choice = click.confirm("Save the page?", default=True)
+    except click.Abort as e:
         raise KeyboardInterrupt from e
     if choice:
         return new_text, summary
     else:
-        raise pywikibot.bot.ChoiceException
+        raise RuntimeError
 
 
 inrbot.id_hooks.append(id_hook)
@@ -131,7 +131,7 @@ def archive_status_hook(
                 f"This file would fail because of the {ina_license} license, "
                 f"but an archived copy is available at {archive}."
             )
-            new_license = input("Archive license (leave blank for no change): ")
+            new_license = click.prompt("Archive license (leave blank for no change)")
             if new_license:
                 ina_license = new_license
                 status = inrbot.check_licenses(ina_license, com_license)
@@ -150,7 +150,8 @@ def ask_url(
         print(f"Observation ID found: {str(observations[0])}")
     if photos:
         print(f"Photo ID found: {str(photos[0])}")
-    url = input(f"iNaturalist URL for {page.full_url()} (leave blank for no change): ")
+    
+    url = click.prompt(f"iNaturalist URL for {page.full_url()} (leave blank for no change)")
     # TODO: Add validation
     ina_id = inrbot.parse_ina_url(url)
     ids[page] = ina_id
@@ -160,7 +161,7 @@ def ask_url(
 def ask_compare(com_img: inrbot.CommonsImage, ina_img: inrbot.iNaturalistImage):
     com_img.image.show(title=com_img.page.title())
     ina_img.image.show(title=str(ina_img.id))
-    res = pywikibot.bot.input_yn("Do these images match?", default=False)
+    res = click.confirm("Do these images match?", default=False)
     return res
 
 
@@ -174,7 +175,7 @@ def main(target, url="", simulate=False):
         cat = pywikibot.Category(
             site, "Category:iNaturalist images needing human review"
         )
-        for page in cat.articles(namespaces=6):
+        for page in cat.articles(namespaces=6, reverse=True):
             inrbot.review_file(page)
     else:
         page = pywikibot.FilePage(site, target)
