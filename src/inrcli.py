@@ -42,7 +42,7 @@ inrbot.config.update(
         "|2=License review "
         "not passed: iNaturalist author is using $review_license }} ~~~~",
         "review_summary": "Semi-automatic license review: "
-        "$status $review_license (inrbot $version)",
+        "$status $review_license (inrcli $version)",
         "old_fail_warn": "\n\n{{subst:image permission|1=$filename}} "
         "License review not passed: iNaturalist author is using $review_license. ~~~~",
     }
