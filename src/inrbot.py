@@ -42,7 +42,7 @@ from typing import NamedTuple, Optional, Set, Tuple, Dict, Union, cast, Callable
 
 import utils
 
-__version__ = "1.3.1"
+__version__ = "1.3.2"
 
 logging.config.dictConfig(
     utils.logger_config("inrbot", level="VERBOSE", filename="inrbot.log")
@@ -67,6 +67,8 @@ session.headers.update({"user-agent": user_agent})
 recent_bytes = {}
 conf_ts = None
 compare_methods: List[Tuple[str, Callable]] = []
+pre_save_hooks: List[Callable] = []
+id_hooks: List[Callable] = []
 
 
 class iNaturalistID(NamedTuple):
@@ -167,15 +169,14 @@ def find_ina_id(
         elif url_id.type == "photos":
             photos.append(url_id)
 
-    if config.get("id_hook", []):
-        for hook in config["id_hook"]:
-            hook_id = hook(page, observations=observations, photos=photos)
-            if hook_id is None or re.search(r"[A-z]", hook_id.id):
-                continue
-            elif hook_id.type == "observations":
-                observations.insert(0, hook_id)
-            elif hook_id.type == "photos":
-                photos.insert(0, hook_id)
+    for hook in id_hooks:
+        hook_id = hook(page, observations=observations, photos=photos)
+        if hook_id is None or re.search(r"[A-z]", hook_id.id):
+            continue
+        elif hook_id.type == "observations":
+            observations.insert(0, hook_id)
+        elif hook_id.type == "photos":
+            photos.insert(0, hook_id)
 
     if photos and observations:
         return observations[0], photos[0]
@@ -633,9 +634,18 @@ def save_page(
     If the global simulate variable is true, the wikitext will be printed
     instead of saved to Commons.
     """
+
     summary = string.Template(config["review_summary"]).safe_substitute(
         status=status, review_license=review_license, version=__version__
     )
+    for hook in pre_save_hooks:
+        new_text, summary = hook(
+            page=page,
+            new_text=new_text,
+            summary=summary,
+            status=status,
+            review_license=review_license,
+        )
     if not simulate:
         utils.check_runpage(site, run_override)
         logger.info(f"Saving {page.title()}")

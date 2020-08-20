@@ -19,10 +19,12 @@
 
 import click
 import pywikibot
+import pywikibot.bot
 import logging
 import os
 import re
-from typing import Sequence
+import difflib
+from typing import Sequence, Dict
 
 os.environ["LOG_FILE"] = "stderr"
 
@@ -30,9 +32,8 @@ import inrbot  # noqa: E402
 
 site = inrbot.site
 logger = logging.getLogger("manual")
-ids = {}
+ids: Dict[pywikibot.Page, inrbot.iNaturalistID] = {}
 
-inrbot.simulate = True
 inrbot.config.update(
     {
         "fail_tag": "{{copyvio|License review not passed: "
@@ -52,6 +53,7 @@ def id_hook(
     page: pywikibot.Page,
     observations: Sequence[inrbot.iNaturalistID] = [],
     photos: Sequence[inrbot.iNaturalistID] = [],
+    **kwargs,
 ):
     try:
         return ids[page]
@@ -60,7 +62,9 @@ def id_hook(
     return None
 
 
-def manual_compare(com_img: inrbot.CommonsImage, ina_img: inrbot.iNaturalistImage):
+def manual_compare(
+    com_img: inrbot.CommonsImage, ina_img: inrbot.iNaturalistImage, **kwargs
+):
     if ids.get(com_img.page, None) == ina_img.id and ina_img.id.type == "photos":
         return True
     else:
@@ -80,9 +84,32 @@ def check_can_run(page: pywikibot.page.BasePage) -> bool:
         return True
 
 
-inrbot.config.setdefault("id_hook", []).append(id_hook)
+def pre_save(page, new_text, summary, status, review_license, **kwargs):
+    print(
+        f"{page.title(as_link=True)} reviewed with status {status} "
+        "and license {review_license}"
+    )
+    if status == "error":
+        raise inrbot.StopReview
+
+    diff = difflib.unified_diff(
+        page.get().split("\n"), new_text.split("\n"), lineterm=""
+    )
+    print("\n".join(diff))
+    try:
+        choice = pywikibot.bot.input_yn("Save the page?", default=True)
+    except pywikibot.bot.QuitKeyboardInterrupt as e:
+        raise KeyboardInterrupt from e
+    if choice:
+        return new_text, summary
+    else:
+        raise pywikibot.bot.ChoiceException
+
+
+inrbot.id_hooks.append(id_hook)
 inrbot.compare_methods.insert(0, ("manual", manual_compare))
 inrbot.check_can_run = check_can_run
+inrbot.pre_save_hooks.append(pre_save)
 
 
 def ask_url(
@@ -103,7 +130,7 @@ def ask_url(
 def ask_compare(com_img: inrbot.CommonsImage, ina_img: inrbot.iNaturalistImage):
     com_img.image.show(title=com_img.page.title())
     ina_img.image.show(title=str(ina_img.id))
-    res = input("Do these images match? [y/N]")
+    res = pywikibot.bot.input_yn("Do these images match?", default=False)
     return res
 
 
