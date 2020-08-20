@@ -87,7 +87,7 @@ def check_can_run(page: pywikibot.page.BasePage) -> bool:
 def pre_save(page, new_text, summary, status, review_license, **kwargs):
     print(
         f"{page.title(as_link=True)} reviewed with status {status} "
-        "and license {review_license}"
+        f"and license {review_license}"
     )
     if status == "error":
         raise inrbot.StopReview
@@ -145,7 +145,7 @@ def main(target, url="", simulate=False):
         cat = pywikibot.Category(
             site, "Category:iNaturalist images needing human review"
         )
-        for page in cat.iterpages():
+        for page in cat.articles(namespaces=6):
             inrbot.review_file(page)
     else:
         page = pywikibot.FilePage(site, target)
