@@ -24,10 +24,6 @@ jobs:
       run: |
         pipenv_to_requirements -f
         git diff --exit-code
-    - name: Load pywikibot config
-      env:
-        USER_CONFIG_PY: ${{ secrets.user_config_py }}
-      run: echo "$USER_CONFIG_PY" > user-config.py
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
@@ -40,6 +36,10 @@ jobs:
     - name: Static type check with mypy
       run :
         mypy src
+    - name: Load pywikibot config
+      env:
+        USER_CONFIG_PY: ${{ secrets.user_config_py }}
+      run: echo "$USER_CONFIG_PY" > user-config.py
     - name: Test with pytest
       run: |
         coverage run -m pytest -o addopts=
