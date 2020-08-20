@@ -156,10 +156,10 @@ def find_ina_id(
     for url in page.extlinks():
         url_id = parse_ina_url(url)
         if (
-                url_id is None
-                or re.search(r"[A-z]", url_id.id)
-                or url_id in photos
-                or url_id in observations
+            url_id is None
+            or re.search(r"[A-z]", url_id.id)
+            or url_id in photos
+            or url_id in observations
         ):
             continue
         elif url_id.type == "observations":

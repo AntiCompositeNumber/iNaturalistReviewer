@@ -37,7 +37,8 @@ inrbot.config.update(
     {
         "fail_tag": "{{copyvio|License review not passed: "
         "iNaturalist author is using $review_license}}\n",
-        "fail_warn": "\n\n{{subst:Copyvionote |1=$filename ""|2=License review "
+        "fail_warn": "\n\n{{subst:Copyvionote |1=$filename "
+        "|2=License review "
         "not passed: iNaturalist author is using $review_license }} ~~~~",
         "review_summary": "Semi-automatic license review: "
         "$status $review_license (inrbot $version)",

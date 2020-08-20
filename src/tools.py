@@ -40,5 +40,6 @@ def potential_files():
     search += " ".join(f'-incategory:"{cat}"' for cat in stop_cats)
     print(search)
 
+
 if __name__ == "__main__":
     potential_files()
