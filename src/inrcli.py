@@ -24,7 +24,7 @@ import logging
 import os
 import re
 import difflib
-from typing import Sequence, Dict, Optional
+from typing import Sequence, Dict, Optional, Tuple
 
 os.environ["LOG_FILE"] = "stderr"
 
@@ -110,6 +110,35 @@ inrbot.id_hooks.append(id_hook)
 inrbot.compare_methods.insert(0, ("manual", manual_compare))
 inrbot.check_can_run = check_can_run
 inrbot.pre_save_hooks.append(pre_save)
+get_old_archive_ = inrbot.get_old_archive
+
+
+def get_old_archive(photo_id: inrbot.iNaturalistID):
+    # Archives will have already been reviewed by the archive_status_hook
+    return ""
+
+
+inrbot.get_old_archive = get_old_archive
+
+
+def archive_status_hook(
+    status: str, ina_license: str, com_license: str, photo_id: inrbot.iNaturalistID
+) -> Tuple[str, str, str]:
+    if status == "fail":
+        archive = get_old_archive_(photo_id)
+        if archive:
+            print(
+                f"This file would fail because of the {ina_license} license, "
+                f"but an archived copy is available at {archive}."
+            )
+            new_license = input("Archive license (leave blank for no change): ")
+            if new_license:
+                ina_license = new_license
+                status = inrbot.check_licenses(ina_license, com_license)
+    return status, ina_license, com_license
+
+
+inrbot.status_hooks.append(archive_status_hook)
 
 
 def ask_url(

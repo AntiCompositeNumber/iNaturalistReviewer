@@ -42,7 +42,7 @@ from typing import NamedTuple, Optional, Set, Tuple, Dict, Union, cast, Callable
 
 import utils
 
-__version__ = "1.3.2"
+__version__ = "1.3.3"
 
 logging.config.dictConfig(
     utils.logger_config("inrbot", level="VERBOSE", filename="inrbot.log")
@@ -66,9 +66,11 @@ session = requests.Session()
 session.headers.update({"user-agent": user_agent})
 recent_bytes = {}
 conf_ts = None
+
 compare_methods: List[Tuple[str, Callable]] = []
 pre_save_hooks: List[Callable] = []
 id_hooks: List[Callable] = []
+status_hooks: List[Callable] = []
 
 
 class iNaturalistID(NamedTuple):
@@ -806,6 +808,14 @@ def review_file(
         com_license = find_com_license(page)
         logger.debug(f"Commons License: {com_license}")
         status = check_licenses(ina_license, com_license)
+        for hook in status_hooks:
+            status, ina_license, com_license = hook(
+                status=status,
+                ina_license=ina_license,
+                com_license=com_license,
+                photo_id=photo_id,
+            )
+
         if status == "fail":
             is_old = file_is_old(page)
             no_del = check_should_del(page)
