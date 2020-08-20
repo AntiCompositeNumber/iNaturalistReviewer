@@ -38,12 +38,11 @@ import requests
 import PIL.Image  # type: ignore
 import waybackpy  # type: ignore
 
-from typing import NamedTuple, Optional, Set, Tuple, Dict, Union, cast
+from typing import NamedTuple, Optional, Set, Tuple, Dict, Union, cast, Callable, List
 
 import utils
 
-__version__ = "1.2.3"
-username = "iNaturalistReviewBot"
+__version__ = "1.3.0"
 
 logging.config.dictConfig(
     utils.logger_config("inrbot", level="VERBOSE", filename="inrbot.log")
@@ -51,6 +50,8 @@ logging.config.dictConfig(
 logger = logging.getLogger("inrbot")
 
 site = pywikibot.Site("commons", "commons")
+site.login()
+username = site.username()
 skip: Set[str] = set()
 user_agent = (
     f"Bot iNaturalistReviewer/{__version__} "
@@ -65,6 +66,7 @@ session = requests.Session()
 session.headers.update({"user-agent": user_agent})
 recent_bytes = {}
 conf_ts = None
+compare_methods: List[Tuple[str, Callable]] = []
 
 
 class iNaturalistID(NamedTuple):
@@ -115,7 +117,6 @@ def check_config():
 
 def check_can_run(page: pywikibot.page.BasePage) -> bool:
     """Determinies if the bot should run on this page and returns a bool."""
-
     if (
         (page.title() in skip)
         or (not page.has_permission("edit"))
@@ -140,23 +141,39 @@ def find_ina_id(
     page: pywikibot.page.BasePage,
 ) -> Tuple[Optional[iNaturalistID], Optional[iNaturalistID]]:
     """Returns an iNaturalistID tuple from wikitext"""
-    photos = set()
-    observations = set()
+    photos = []
+    observations = []
+
     for url in page.extlinks():
         url_id = parse_ina_url(url)
-        if url_id is None or re.search(r"[A-z]", url_id.id):
+        if (
+                url_id is None
+                or re.search(r"[A-z]", url_id.id)
+                or url_id in photos
+                or url_id in observations
+        ):
             continue
         elif url_id.type == "observations":
-            observations.add(url_id)
+            observations.append(url_id)
         elif url_id.type == "photos":
-            photos.add(url_id)
+            photos.append(url_id)
+
+    if config.get("id_hook", []):
+        for hook in config["id_hook"]:
+            hook_id = hook(page, observations=observations, photos=photos)
+            if hook_id is None or re.search(r"[A-z]", hook_id.id):
+                continue
+            elif hook_id.type == "observations":
+                observations.insert(0, hook_id)
+            elif hook_id.type == "photos":
+                photos.insert(0, hook_id)
 
     if photos and observations:
-        return observations.pop(), photos.pop()
+        return observations[0], photos[0]
     elif observations:
-        return observations.pop(), None
+        return observations[0], None
     elif photos:
-        return None, photos.pop()
+        return None, photos[0]
     else:
         raise ProcessingError("nourl", "No observation ID could be found")
 
@@ -317,11 +334,11 @@ def find_photo_in_obs(
 
     commons_image = CommonsImage(page=page)
 
-    for comp_method in config["compare_methods"]:
+    for comp_method, comp_func in compare_methods:
         logger.debug(f"Comparing photos using {comp_method}")
         for image in images:
             try:
-                res = compare_images(comp_method, commons_image, image)
+                res = comp_func(com_img=commons_image, ina_img=image)
             except Exception:
                 res = False
             if res:
@@ -333,21 +350,16 @@ def find_photo_in_obs(
     raise ProcessingError("notmatching", "No matching photos found")
 
 
-def compare_images(
-    method: str, com_img: CommonsImage, ina_img: iNaturalistImage
-) -> bool:
-    """Compares a CommonsImage to an iNaturalistImage"""
-    if method == "sha1":
-        logger.debug(f"Commons sha1sum:     {com_img.sha1}")
-        logger.debug(f"iNaturalist sha1sum: {ina_img.sha1}")
-        return compare_digest(com_img.sha1, ina_img.sha1)
+def compare_sha1(com_img: CommonsImage, ina_img: iNaturalistImage) -> bool:
+    logger.debug(f"Commons sha1sum:     {com_img.sha1}")
+    logger.debug(f"iNaturalist sha1sum: {ina_img.sha1}")
+    return compare_digest(com_img.sha1, ina_img.sha1)
 
-    elif method == "phash":
-        diff = com_img.phash - ina_img.phash
-        logger.debug(f"PHash Hamming distance: {diff}")
-        return diff <= config.get("max_phash_dist", 4)
-    else:
-        raise ValueError
+
+def compare_phash(com_img: CommonsImage, ina_img: iNaturalistImage) -> bool:
+    diff = com_img.phash - ina_img.phash
+    logger.debug(f"PHash Hamming distance: {diff}")
+    return diff <= config.get("max_phash_dist", 4)
 
 
 def get_ina_image(photo: iNaturalistID, final: bool = False) -> bytes:
@@ -546,11 +558,12 @@ def update_review(
     )
     changed = False
     for review_template in code.ifilter_templates(
-        matches=lambda t: t.name.lower() == "inaturalistreview"
+        matches=lambda t: t.name.strip().lower() == "inaturalistreview"
     ):
         code.replace(review_template, template)
         changed = True
     if not changed:
+        logger.info("Page not changed")
         return False
 
     if status == "pass-change":
@@ -877,6 +890,11 @@ def main(
 
 
 config, conf_ts = get_config()
+if "sha1" in config["compare_methods"]:
+    compare_methods.append(("sha1", compare_sha1))
+if "phash" in config["compare_methods"]:
+    compare_methods.append(("phash", compare_phash))
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Review files from iNaturalist on Commons",

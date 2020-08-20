@@ -19,6 +19,7 @@ mwparserfromhell = "*"
 pillow = "*"
 waybackpy = "*"
 imagehash = "*"
+click = "*"
 
 [requires]
 python_version = "3.7"
