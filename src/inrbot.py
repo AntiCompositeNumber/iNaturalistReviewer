@@ -43,7 +43,7 @@ from typing import Any
 
 import utils
 
-__version__ = "2.0.0"
+__version__ = "2.0.1"
 
 logging.config.dictConfig(
     utils.logger_config("inrbot", level="VERBOSE", filename="inrbot.log")
@@ -447,6 +447,7 @@ class CommonsPage:
                 observations.insert(0, hook_id)
             elif hook_id.type == "photos":
                 photos.insert(0, hook_id)
+                observations = []
 
         if photos and observations:
             return observations[0], photos[0]
@@ -780,7 +781,7 @@ class CommonsPage:
         text = template.safe_substitute(
             status=self.status,
             author=self.ina_author,
-            source_url=str(self.photo_id),
+            source_url=str(self.photo_id) if self.photo_id else "",
             review_date=datetime.date.today().isoformat(),
             reviewer=username,
             review_license=self.ina_license,
@@ -888,6 +889,8 @@ class CommonsPage:
         except StopReview as err:
             logger.info(f"Image already reviewed, contains {err.reason}")
             self.status = "stop"
+        except (pywikibot.exceptions.UserBlocked, KeyboardInterrupt) as err:
+            raise err
         except Exception as err:
             logger.exception(err)
             self.status = "error"

@@ -115,16 +115,13 @@ class ManualCommonsPage(inrbot.CommonsPage):
             f"and license {self.ina_license}"
         )
         if self.status == "error":
-            raise inrbot.StopReview
+            raise RuntimeError
 
         diff = difflib.unified_diff(
             self.page.get().split("\n"), new_text.split("\n"), lineterm=""
         )
         print("\n".join(diff))
-        try:
-            choice = click.confirm("Save the page?", default=True)
-        except click.Abort as e:
-            raise KeyboardInterrupt from e
+        choice = click.confirm("Save the page?", default=True)
         if choice:
             return new_text, summary
         else:
@@ -157,9 +154,9 @@ class ManualCommonsPage(inrbot.CommonsPage):
             url = click.prompt("iNaturalist Photos URL")
             ina_id = inrbot.parse_ina_url(url)
             if observations:
-                self.page.text.replace(str(observations[0]), url)
+                self.page.text = self.page.text.replace(str(observations[0]), url)
             if photos:
-                self.page.text.replace(str(photos[0]), url)
+                self.page.text = self.page.text.replace(str(photos[0]), url)
         elif observations and not photos:
             url = click.prompt("iNaturalist Photos URL")
             ina_id = inrbot.parse_ina_url(url)
@@ -188,6 +185,7 @@ def main(target, url="", simulate=False):
         )
         for page in cat.articles(namespaces=6, reverse=True):
             ManualCommonsPage(pywikibot.FilePage(page)).review_file()
+            click.confirm("Continue", abort=True, default=True)
     else:
         page = pywikibot.FilePage(site, target)
         if url:
