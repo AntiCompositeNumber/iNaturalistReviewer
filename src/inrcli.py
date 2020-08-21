@@ -27,6 +27,7 @@ import difflib
 from typing import Sequence, Dict, Optional
 
 os.environ["LOG_FILE"] = "stderr"
+os.environ["LOG_LEVEL"] = "WARNING"
 
 import inrbot  # noqa: E402
 
@@ -177,13 +178,14 @@ inrbot.pre_save_hooks.append(ManualCommonsPage.pre_save)
 @click.argument("target")
 @click.option("--url")
 @click.option("--simulate/--no-simulate")
-def main(target, url="", simulate=False):
+@click.option("--reverse", is_flag=True, default=False)
+def main(target, url="", simulate=False, reverse=False):
     inrbot.simulate = simulate
     if target == "auto":
         cat = pywikibot.Category(
             site, "Category:iNaturalist images needing human review"
         )
-        for page in cat.articles(namespaces=6, reverse=True):
+        for page in cat.articles(namespaces=6, reverse=reverse):
             ManualCommonsPage(pywikibot.FilePage(page)).review_file()
             click.confirm("Continue", abort=True, default=True)
     else:
