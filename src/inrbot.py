@@ -629,7 +629,7 @@ class CommonsPage:
             pass:       Licenses match
             pass-change: Commons license changed to free iNaturalist license
         """
-        if not self._status:
+        if not self._status and not self.locked:
             free_licenses = set(config["free_licenses"])
 
             if not self.ina_license:
@@ -650,7 +650,7 @@ class CommonsPage:
 
     @status.setter
     def status(self, value):
-        self._status = value
+        self._set_locking("_status", value)
 
     @status.deleter
     def status(self):
