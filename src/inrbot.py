@@ -39,10 +39,11 @@ import PIL.Image  # type: ignore
 import waybackpy  # type: ignore
 
 from typing import NamedTuple, Optional, Set, Tuple, Dict, Union, cast, Callable, List
+from typing import Any
 
 import utils
 
-__version__ = "1.3.3"
+__version__ = "2.0.0"
 
 logging.config.dictConfig(
     utils.logger_config("inrbot", level="VERBOSE", filename="inrbot.log")
@@ -93,13 +94,13 @@ class RestartBot(RuntimeError):
 
 
 class ProcessingError(Exception):
-    def __init__(self, reason_code, description=""):
+    def __init__(self, reason_code: str, description: str = ""):
         self.reason_code = reason_code
         self.description = description
 
 
 class StopReview(Exception):
-    def __init__(self, reason):
+    def __init__(self, reason: str):
         self.reason = reason
 
 
@@ -128,19 +129,6 @@ def init_compare_methods():
         compare_methods.append(("phash", compare_phash))
 
 
-def check_can_run(page: pywikibot.page.BasePage) -> bool:
-    """Determinies if the bot should run on this page and returns a bool."""
-    if (
-        (page.title() in skip)
-        or (not page.has_permission("edit"))
-        or (not page.botMayEdit())
-        or (not re.search("{{[iI][nN]aturalist[rR]eview}}", page.text))
-    ):
-        return False
-    else:
-        return True
-
-
 def files_to_check(start: Optional[str] = None) -> pywikibot.page.BasePage:
     """Iterate list of files needing review from Commons"""
     category = pywikibot.Category(site, "Category:INaturalist review needed")
@@ -148,46 +136,6 @@ def files_to_check(start: Optional[str] = None) -> pywikibot.page.BasePage:
         category, namespaces=6, start=start
     ):
         yield page
-
-
-def find_ina_id(
-    page: pywikibot.page.BasePage,
-) -> Tuple[Optional[iNaturalistID], Optional[iNaturalistID]]:
-    """Returns an iNaturalistID tuple from wikitext"""
-    photos = []
-    observations = []
-
-    for url in page.extlinks():
-        url_id = parse_ina_url(url)
-        if (
-            url_id is None
-            or re.search(r"[A-z]", url_id.id)
-            or url_id in photos
-            or url_id in observations
-        ):
-            continue
-        elif url_id.type == "observations":
-            observations.append(url_id)
-        elif url_id.type == "photos":
-            photos.append(url_id)
-
-    for hook in id_hooks:
-        hook_id = hook(page, observations=observations, photos=photos)
-        if hook_id is None or re.search(r"[A-z]", hook_id.id):
-            continue
-        elif hook_id.type == "observations":
-            observations.insert(0, hook_id)
-        elif hook_id.type == "photos":
-            photos.insert(0, hook_id)
-
-    if photos and observations:
-        return observations[0], photos[0]
-    elif observations:
-        return observations[0], None
-    elif photos:
-        return None, photos[0]
-    else:
-        raise ProcessingError("nourl", "No observation ID could be found")
 
 
 def parse_ina_url(raw_url: str) -> Optional[iNaturalistID]:
@@ -213,35 +161,6 @@ def parse_ina_url(raw_url: str) -> Optional[iNaturalistID]:
         return iNaturalistID(type=path[1], id=str(path[2]))
     else:
         return None
-
-
-def get_ina_data(
-    ina_id: iNaturalistID, throttle: Optional[utils.Throttle] = None
-) -> dict:
-    """Make API request to iNaturalist from an ID and ID type
-
-    Returns a dict of the API result
-    """
-    if ina_id.type == "observations":
-        url = f"https://api.inaturalist.org/v1/observations/{ina_id.id}"
-    else:
-        raise ProcessingError("apierr", "iNaturalist ID is wrong type")
-
-    if throttle:
-        throttle.throttle()
-    try:
-        response = session.get(url, headers={"Accept": "application/json"})
-        response.raise_for_status()
-        response_json = response.json()
-    except (ValueError, requests.exceptions.HTTPError) as err:
-        raise ProcessingError("apierr", "iNaturalist API error") from err
-    else:
-        if response_json.get("total_results") != 1:
-            raise ProcessingError("apierr", "iNaturalist API error")
-        res = response_json.get("results", [None])[0]
-        if not res:
-            raise ProcessingError("apierr", "No data recieved from iNaturalist")
-        return res
 
 
 class Image:
@@ -320,48 +239,6 @@ class CommonsImage(Image):
         return self._sha1
 
 
-def find_photo_in_obs(
-    page: pywikibot.FilePage,
-    obs_id: iNaturalistID,
-    ina_data: dict,
-    raw_photo_id: Optional[iNaturalistID] = None,
-    throttle: Optional[utils.Throttle] = None,
-) -> Tuple[iNaturalistID, str]:
-    """Find the matching image in an iNaturalist observation
-
-    Returns an iNaturalistID named tuple with the photo ID.
-    """
-    images = [
-        iNaturalistImage(
-            id=iNaturalistID(type="photos", id=str(photo["id"]), url=photo["url"])
-        )
-        for photo in ina_data["photos"]
-    ]
-    if len(images) < 1:
-        raise ProcessingError("notfound", "No photos in observation")
-    elif raw_photo_id:
-        filt_images = [image for image in images if image.id == raw_photo_id]
-        if len(filt_images) > 0:
-            images = filt_images
-
-    commons_image = CommonsImage(page=page)
-
-    for comp_method, comp_func in compare_methods:
-        logger.debug(f"Comparing photos using {comp_method}")
-        for image in images:
-            try:
-                res = comp_func(com_img=commons_image, ina_img=image)
-            except Exception:
-                res = False
-            if res:
-                logger.info(f"Match found: {str(image.id)}")
-                return image.id, comp_method
-            elif throttle:
-                throttle.throttle()
-
-    raise ProcessingError("notmatching", "No matching photos found")
-
-
 def compare_sha1(com_img: CommonsImage, ina_img: iNaturalistImage) -> bool:
     logger.debug(f"Commons sha1sum:     {com_img.sha1}")
     logger.debug(f"iNaturalist sha1sum: {ina_img.sha1}")
@@ -425,82 +302,6 @@ def bytes_throttle(length: int) -> None:
     return None
 
 
-def find_ina_license(ina_data: dict, photo: iNaturalistID) -> str:
-    """Find the image license in the iNaturalist API response
-
-    If a license is found, the Commons template name is returned.
-    If no license is found, an empty string is returned.
-
-    The API does not return CC version numbers, but the website has 4.0 links.
-    CC 4.0 licenses are assumed.
-    """
-    licenses = config["ina_licenses"]
-    photos: list = ina_data.get("photos", [])
-    for photo_data in photos:
-        if str(photo_data.get("id")) == photo.id:
-            license_code = photo_data.get("license_code", "null")
-            break
-    else:
-        raise ProcessingError("inatlicense", "No iNaturalist license found")
-
-    if not license_code:
-        license_code = "null"
-
-    try:
-        return licenses[license_code]
-    except KeyError as e:
-        raise ProcessingError("inatlicense", "No iNaturalist license found") from e
-
-
-def find_ina_author(ina_data: dict) -> str:
-    """Find the image author in the iNaturalist API response
-
-    Returns a string with the username of the iNaturalist contributor
-    """
-    return ina_data.get("user", {}).get("login", "")
-
-
-def find_com_license(page: pywikibot.page.BasePage) -> str:
-    """Find the license template currently used on the Commons page
-
-    Returns the first license template used on the page. If no templates
-    are found, return an empty string.
-    """
-    category = pywikibot.Category(site, "Category:Primary license tags (flat list)")
-
-    for template in page.itertemplates():
-        if template in category.members(namespaces=10):
-            return template.title(with_ns=False)
-    else:
-        raise ProcessingError("comlicense", "No Commons license found")
-
-
-def check_licenses(ina_license: str, com_license: str) -> str:
-    """Checks the Commons license against the iNaturalist license
-
-    Returns a string with the status
-    Statuses:
-        fail:       iNaturalist license is non-free
-        error:      Bot could not determine
-        pass:       Licenses match
-        pass-change: Commons license changed to free iNaturalist license
-    """
-    free_licenses = set(config["free_licenses"])
-
-    if not ina_license:
-        # iNaturalist license wasn't found, call in the humans
-        return "error"
-    elif ina_license not in free_licenses:
-        # Source license is non-free, failed license review
-        return "fail"
-    elif ina_license == com_license:
-        # Licenses are the same, license review passes
-        return "pass"
-    else:
-        # Commons license doesn't match iNaturalist, update to match
-        return "pass-change"
-
-
 class Aliases:
     alias_cache: Dict[str, Dict[str, Union[float, Set[str]]]] = {}
 
@@ -543,162 +344,6 @@ class Aliases:
         return False
 
 
-def update_review(
-    page: pywikibot.page.BasePage,
-    photo_id: Optional[iNaturalistID] = None,
-    status: str = "error",
-    author: str = "",
-    review_license: str = "",
-    upload_license: str = "",
-    reason: str = "",
-    is_old: bool = False,
-    throttle: Optional[utils.Throttle] = None,
-    archive: str = "",
-    no_del: bool = False,
-) -> bool:
-    """Updates the wikitext with the review status"""
-    logger.info(f"Status: {status} ({reason})")
-    code = mwph.parse(page.text)
-    template = make_template(
-        photo_id=photo_id,
-        status=status,
-        author=author,
-        review_license=review_license,
-        upload_license=upload_license,
-        reason=reason,
-        archive=archive,
-    )
-    changed = False
-    for review_template in code.ifilter_templates(
-        matches=lambda t: t.name.strip().lower() == "inaturalistreview"
-    ):
-        code.replace(review_template, template)
-        changed = True
-    if not changed:
-        logger.info("Page not changed")
-        return False
-
-    if status == "pass-change":
-        aliases = Aliases(upload_license)
-        for pt2 in code.ifilter_templates(matches=aliases.is_license):
-            code.replace(pt2, ("{{%s}}" % review_license))
-    if status == "fail" and not no_del:
-        code.insert(
-            0,
-            string.Template(
-                config["old_fail_tag"] if is_old else config["fail_tag"]
-            ).safe_substitute(review_license=review_license),
-        )
-
-    if throttle is not None:
-        throttle.throttle()
-    try:
-        save_page(page, str(code), status, review_license)
-    except Exception as err:
-        logging.exception(err)
-        return False
-    else:
-        return True
-
-
-def make_template(
-    photo_id: Optional[iNaturalistID] = None,
-    status: str = "",
-    author: str = "",
-    review_license: str = "",
-    upload_license: str = "",
-    reason: str = "",
-    archive: str = "",
-) -> str:
-    """Constructs the iNaturalistReview template"""
-    if status == "stop":
-        return ""
-    template = string.Template(config[status])
-    text = template.safe_substitute(
-        status=status,
-        author=author,
-        source_url=str(photo_id),
-        review_date=datetime.date.today().isoformat(),
-        reviewer=username,
-        review_license=review_license,
-        upload_license=upload_license,
-        reason=reason,
-        archive=archive,
-    )
-    return text
-
-
-def save_page(
-    page: pywikibot.page.BasePage, new_text: str, status: str, review_license: str
-) -> None:
-    """Replaces the wikitext of the specified page with new_text
-
-    If the global simulate variable is true, the wikitext will be printed
-    instead of saved to Commons.
-    """
-
-    summary = string.Template(config["review_summary"]).safe_substitute(
-        status=status, review_license=review_license, version=__version__
-    )
-    for hook in pre_save_hooks:
-        new_text, summary = hook(
-            page=page,
-            new_text=new_text,
-            summary=summary,
-            status=status,
-            review_license=review_license,
-        )
-    if not simulate:
-        utils.check_runpage(site, run_override)
-        logger.info(f"Saving {page.title()}")
-        utils.retry(
-            utils.save_page,
-            3,
-            text=new_text,
-            page=page,
-            summary=summary,
-            bot=False,
-            minor=False,
-        )
-    else:
-        logger.info("Saving disabled")
-        logger.debug(summary)
-        logger.debug(new_text)
-
-
-def get_author_talk(page: pywikibot.page.FilePage) -> pywikibot.page.Page:
-    return pywikibot.Page(site, f"User talk:{page.oldest_file_info.user}")
-
-
-def fail_warning(
-    page: pywikibot.page.BasePage, review_license: str, is_old: bool = False
-) -> None:
-    user_talk = get_author_talk(page)
-    message = string.Template(
-        config["old_fail_warn"] if is_old else config["fail_warn"]
-    ).safe_substitute(filename=page.title(with_ns=True), review_license=review_license)
-    summary = string.Template(config["review_summary"]).safe_substitute(
-        status="fail", review_license=review_license, version=__version__
-    )
-    if not simulate:
-        utils.check_runpage(site, run_override)
-        logger.info(f"Saving {user_talk.title()}")
-        utils.retry(
-            utils.save_page,
-            3,
-            text=message,
-            page=user_talk,
-            summary=summary,
-            bot=False,
-            minor=False,
-            mode="append",
-        )
-    else:
-        logger.info("Saving disabled")
-        logger.info(summary)
-        logger.info(message)
-
-
 def get_observation_from_photo(photo_id: iNaturalistID) -> iNaturalistID:
     assert photo_id.type == "photos"
     try:
@@ -714,155 +359,535 @@ def get_observation_from_photo(photo_id: iNaturalistID) -> iNaturalistID:
         return iNaturalistID(type="observations", id=match.group(1))
 
 
-def file_is_old(page: pywikibot.page.FilePage) -> bool:
-    if not config.get("old_fail", False):
-        return False
+class CommonsPage:
+    def __init__(
+        self, page: pywikibot.FilePage, throttle: Optional[utils.Throttle] = None
+    ) -> None:
+        self.page = page
+        self._com_license: Optional[str] = None
+        self._ina_license: Optional[str] = None
+        self._status = ""
+        self._ina_author: Optional[str] = None
+        self._ina_data: dict = {}
+        self._is_old: Optional[bool] = None
+        self._no_del: Optional[bool] = None
+        self._archive = ""
+        self.throttle = throttle
+        self.reason = ""
+        self._locked = False
 
-    timestamp = page.latest_file_info.timestamp
-    if (datetime.datetime.now() - timestamp) > datetime.timedelta(
-        days=config["old_fail_age"]
-    ):
-        return True
-    else:
-        return False
+    @property
+    def locked(self) -> bool:
+        return self._locked
 
+    @locked.setter
+    def locked(self, value: bool):
+        if self._locked is False:
+            self._locked = value
+        elif value is False:
+            raise TypeError("Can not unlock parameters")
 
-def get_archive(photo_id: iNaturalistID) -> str:
-    try:
-        archive = waybackpy.Url(str(photo_id), user_agent).save()
-    except Exception as err:
-        logger.warn("Failed to get archive")
-        logger.exception(err)
-        archive = ""
-    return archive
+    def lock(self):
+        if self.locked is False:
+            self.locked = True
 
+    def _set_locking(self, attr: str, value: Any) -> None:
+        if not self.locked:
+            setattr(self, attr, value)
+        else:
+            raise TypeError(f"{attr[1:]} has already been read, and can not be changed")
 
-def get_old_archive(photo_id: iNaturalistID) -> str:
-    try:
-        archive = waybackpy.Url(str(photo_id), user_agent).oldest()
-    except Exception as err:
-        logger.warn("Failed to get archive", exc_info=err)
-        archive = ""
-    return archive
+    def check_can_run(self) -> bool:
+        """Determinies if the bot should run on this page and returns a bool."""
+        page = self.page
+        if (
+            (page.title() in skip)
+            or (not page.has_permission("edit"))
+            or (not page.botMayEdit())
+            or (not re.search("{{[iI][nN]aturalist[rR]eview}}", page.text))
+        ):
+            return False
+        else:
+            return True
 
+    def check_stop_cats(self) -> None:
+        stop_cats = {
+            pywikibot.Category(site, title) for title in config["stop_categories"]
+        }
+        page_cats = set(self.page.categories())
+        page_stop = stop_cats & page_cats
+        if page_stop:
+            raise StopReview(str(page_stop))
 
-def check_should_del(page: pywikibot.page.BasePage) -> bool:
-    page_templates = set(page.itertemplates())
-    check_templates = {
-        pywikibot.Page(site, "Template:OTRS received"),
-        pywikibot.Page(site, "Template:Deletion template tag"),
-    }
-    return not page_templates.isdisjoint(check_templates)
+    def find_ina_id(self) -> Tuple[Optional[iNaturalistID], Optional[iNaturalistID]]:
+        """Returns an iNaturalistID tuple from wikitext"""
+        photos = []
+        observations = []
 
+        for url in self.page.extlinks():
+            url_id = parse_ina_url(url)
+            if (
+                url_id is None
+                or re.search(r"[A-z]", url_id.id)
+                or url_id in photos
+                or url_id in observations
+            ):
+                continue
+            elif url_id.type == "observations":
+                observations.append(url_id)
+            elif url_id.type == "photos":
+                photos.append(url_id)
 
-def check_stop_cats(page: pywikibot.page.BasePage) -> None:
-    stop_cats = {pywikibot.Category(site, title) for title in config["stop_categories"]}
-    page_cats = set(page.categories())
-    page_stop = stop_cats & page_cats
-    if page_stop:
-        raise StopReview(page_stop)
+        for hook in id_hooks:
+            hook_id = hook(self, observations=observations, photos=photos)
+            if hook_id is None or re.search(r"[A-z]", hook_id.id):
+                continue
+            elif hook_id.type == "observations":
+                observations.insert(0, hook_id)
+            elif hook_id.type == "photos":
+                photos.insert(0, hook_id)
 
+        if photos and observations:
+            return observations[0], photos[0]
+        elif observations:
+            return observations[0], None
+        elif photos:
+            return None, photos[0]
+        else:
+            raise ProcessingError("nourl", "No observation ID could be found")
 
-def review_file(
-    inpage: pywikibot.page.BasePage, throttle: Optional[utils.Throttle] = None
-) -> Optional[bool]:
-    """Performs a license review on the input page
+    @property
+    def ina_data(self) -> dict:
+        """Make API request to iNaturalist from an ID and ID type
 
-    inpage must be in the file namespace.
+        Returns a dict of the API result
+        """
+        if not self._ina_data:
+            ina_id = self.obs_id
+            if ina_id.type == "observations":
+                url = f"https://api.inaturalist.org/v1/observations/{ina_id.id}"
+            else:
+                raise ProcessingError("apierr", "iNaturalist ID is wrong type")
 
-    Returns None if the file was skipped
-    Returns False if there was an error during review
-    Returns True if the file was successfully reviewed (pass or fail)
-    """
-    try:
-        page = pywikibot.FilePage(inpage)
-    except ValueError:
-        return None
-    logger.info(f"Checking {page.title(as_link=True)}")
+            if self.throttle:
+                self.throttle.throttle()
+            try:
+                response = session.get(url, headers={"Accept": "application/json"})
+                response.raise_for_status()
+                response_json = response.json()
+            except (ValueError, requests.exceptions.HTTPError) as err:
+                raise ProcessingError("apierr", "iNaturalist API error") from err
+            else:
+                if response_json.get("total_results") != 1:
+                    raise ProcessingError("apierr", "iNaturalist API error")
+                res = response_json.get("results", [None])[0]
+                if not res:
+                    raise ProcessingError("apierr", "No data recieved from iNaturalist")
+                self._ina_data = res
+        return self._ina_data
 
-    utils.check_runpage(site, run_override)
-    if not check_can_run(page):
-        return None
+    @property
+    def ina_license(self) -> str:
+        """Find the image license in the iNaturalist API response
 
-    #####
-    try:
-        check_stop_cats(page)
-        raw_obs_id, raw_photo_id = find_ina_id(page)
-        logger.info(f"ID found in wikitext: {raw_obs_id} {raw_photo_id}")
-        if raw_photo_id and not raw_obs_id:
-            raw_obs_id = get_observation_from_photo(raw_photo_id)
-        assert raw_obs_id
+        If a license is found, the Commons template name is returned.
+        If no license is found, an empty string is returned.
 
-        ina_throttle = utils.Throttle(10)
-        ina_data = get_ina_data(raw_obs_id, ina_throttle)
+        The API does not return CC version numbers, but the website has 4.0 links.
+        CC 4.0 licenses are assumed.
+        """
+        if self._ina_license is None:
+            if self.locked:
+                self._ina_license = ""
+            else:
+                licenses = config["ina_licenses"]
+                photos: list = self.ina_data.get("photos", [])
+                for photo_data in photos:
+                    if str(photo_data.get("id")) == self.photo_id.id:
+                        license_code = photo_data.get("license_code", "null")
+                        break
+                else:
+                    raise ProcessingError("inatlicense", "No iNaturalist license found")
 
-        photo_id, found = find_photo_in_obs(
-            page, raw_obs_id, ina_data, raw_photo_id, ina_throttle
-        )
+                if not license_code:
+                    license_code = "null"
 
-        ina_license = find_ina_license(ina_data, photo_id)
-        logger.debug(f"iNaturalist License: {ina_license}")
-        ina_author = find_ina_author(ina_data)
-        logger.debug(f"Author: {ina_author}")
+                try:
+                    self._ina_license = licenses[license_code]
+                except KeyError as e:
+                    raise ProcessingError(
+                        "inatlicense", "No iNaturalist license found"
+                    ) from e
+        return self._ina_license
 
-        com_license = find_com_license(page)
-        logger.debug(f"Commons License: {com_license}")
-        status = check_licenses(ina_license, com_license)
+    @ina_license.setter
+    def ina_license(self, value: str) -> None:
+        self._set_locking("_ina_license", value)
+
+    def find_photo_in_obs(
+        self, raw_photo_id: Optional[iNaturalistID] = None
+    ) -> iNaturalistID:
+        """Find the matching image in an iNaturalist observation
+
+        Returns an iNaturalistID named tuple with the photo ID.
+        """
+        images = [
+            iNaturalistImage(
+                id=iNaturalistID(type="photos", id=str(photo["id"]), url=photo["url"])
+            )
+            for photo in self.ina_data["photos"]
+        ]
+        if len(images) < 1:
+            raise ProcessingError("notfound", "No photos in observation")
+        elif raw_photo_id:
+            filt_images = [image for image in images if image.id == raw_photo_id]
+            if len(filt_images) > 0:
+                images = filt_images
+
+        commons_image = CommonsImage(page=self.page)
+
+        for comp_method, comp_func in compare_methods:
+            logger.info(f"Comparing photos using {comp_method}")
+            for image in images:
+                logger.debug(f"Comparing {str(image.id)}")
+                try:
+                    res = comp_func(com_img=commons_image, ina_img=image)
+                except Exception:
+                    res = False
+                if res:
+                    logger.info(f"Match found: {str(image.id)}")
+                    self.reason = comp_method
+                    return image.id
+                elif self.throttle:
+                    self.throttle.throttle()
+
+        raise ProcessingError("notmatching", "No matching photos found")
+
+    @property
+    def ina_author(self) -> str:
+        """Find the image author in the iNaturalist API response
+
+        Returns a string with the username of the iNaturalist contributor
+        """
+        if self._ina_author is None:
+            if self.locked:
+                self._ina_author = ""
+            else:
+                self._ina_author = self.ina_data.get("user", {}).get("login", "")
+        return self._ina_author
+
+    @ina_author.setter
+    def ina_author(self, value: str) -> None:
+        self._set_locking("_ina_author", value)
+
+    @property
+    def com_license(self) -> str:
+        """Find the license template currently used on the Commons page
+
+        Returns the first license template used on the page. If no templates
+        are found, return an empty string.
+        """
+        if self._com_license is None:
+            if self.locked:
+                self._com_license = ""
+            else:
+                category = pywikibot.Category(
+                    site, "Category:Primary license tags (flat list)"
+                )
+
+                for template in self.page.itertemplates():
+                    if template in category.members(namespaces=10):
+                        self._com_license = template.title(with_ns=False)
+                        break
+                else:
+                    raise ProcessingError("comlicense", "No Commons license found")
+        return self._com_license
+
+    @com_license.setter
+    def com_license(self, value: str) -> None:
+        self._set_locking("_com_license", value)
+
+    @property
+    def status(self) -> str:
+        """Checks the Commons license against the iNaturalist license
+
+        Returns a string with the status
+        Statuses:
+            fail:       iNaturalist license is non-free
+            error:      Bot could not determine
+            pass:       Licenses match
+            pass-change: Commons license changed to free iNaturalist license
+        """
+        if not self._status:
+            free_licenses = set(config["free_licenses"])
+
+            if not self.ina_license:
+                # iNaturalist license wasn't found, call in the humans
+                self._status = "error"
+            elif self.ina_license not in free_licenses:
+                # Source license is non-free, failed license review
+                self._status = "fail"
+            elif self.ina_license == self.com_license:
+                # Licenses are the same, license review passes
+                self._status = "pass"
+            else:
+                # Commons license doesn't match iNaturalist, update to match
+                self._status = "pass-change"
         for hook in status_hooks:
-            status, ina_license, com_license = hook(
-                status=status,
-                ina_license=ina_license,
-                com_license=com_license,
-                photo_id=photo_id,
+            hook(self)
+        return self._status
+
+    @status.setter
+    def status(self, value):
+        self._status = value
+
+    @status.deleter
+    def status(self):
+        self._status = ""
+
+    def _file_is_old(self) -> bool:
+        if not config.get("old_fail", False):
+            return False
+
+        timestamp = self.page.latest_file_info.timestamp
+        if (datetime.datetime.now() - timestamp) > datetime.timedelta(
+            days=config["old_fail_age"]
+        ):
+            return True
+        else:
+            return False
+
+    @property
+    def is_old(self) -> bool:
+        if self._is_old is None:
+            if self.status == "fail":
+                self._is_old = self._file_is_old()
+            else:
+                self._is_old = False
+        return self._is_old
+
+    @is_old.setter
+    def is_old(self, value: bool) -> None:
+        self._set_locking("_is_old", value)
+
+    @property
+    def no_del(self) -> bool:
+        if self._no_del is None:
+            if self.status == "fail":
+                page_templates = set(self.page.itertemplates())
+                check_templates = {
+                    pywikibot.Page(site, "Template:OTRS received"),
+                    pywikibot.Page(site, "Template:Deletion template tag"),
+                }
+                self._no_del = not page_templates.isdisjoint(check_templates)
+            else:
+                self._no_del = False
+        return self._no_del
+
+    @no_del.setter
+    def no_del(self, value) -> None:
+        self._set_locking("_no_del", value)
+
+    @property
+    def archive(self) -> str:
+        if not self._archive:
+            if config["use_wayback"] and self.status in ("pass", "pass-change"):
+                self.save_archive()
+            elif self.status == "fail":
+                self.get_old_archive()
+        return self._archive
+
+    @archive.setter
+    def archive(self, value: str) -> None:
+        self._archive = value
+
+    def save_archive(self) -> None:
+        try:
+            archive = waybackpy.Url(str(self.photo_id), user_agent).save()
+        except Exception as err:
+            logger.warn("Failed to get archive")
+            logger.exception(err)
+            archive = ""
+        self.archive = archive
+
+    def get_old_archive(self) -> None:
+        try:
+            archive = waybackpy.Url(str(self.photo_id), user_agent).oldest()
+        except Exception as err:
+            logger.warn("Failed to get archive", exc_info=err)
+            archive = ""
+        else:
+            self.archive = archive
+            self.status = "fail-archive"
+
+    def uploader_talk(self) -> pywikibot.page.Page:
+        return pywikibot.Page(site, f"User talk:{self.page.oldest_file_info.user}")
+
+    def update_review(self) -> bool:
+        """Updates the wikitext with the review status"""
+        logger.info(f"Status: {self.status} ({self.reason})")
+        self.lock()
+        code = mwph.parse(self.page.text)
+        template = self.make_template()
+        changed = False
+        for review_template in code.ifilter_templates(
+            matches=lambda t: t.name.strip().lower() == "inaturalistreview"
+        ):
+            code.replace(review_template, template)
+            changed = True
+        if not changed:
+            logger.info("Page not changed")
+            return False
+
+        if self.status == "pass-change":
+            aliases = Aliases(self.com_license)
+            for pt2 in code.ifilter_templates(matches=aliases.is_license):
+                code.replace(pt2, ("{{%s}}" % self.ina_license))
+        if self.status == "fail" and not self.no_del:
+            code.insert(
+                0,
+                string.Template(
+                    config["old_fail_tag"] if self.is_old else config["fail_tag"]
+                ).safe_substitute(review_license=self.ina_license),
             )
 
-        if status == "fail":
-            is_old = file_is_old(page)
-            no_del = check_should_del(page)
+        if self.throttle is not None:
+            self.throttle.throttle()
+        try:
+            self.save_page(str(code))
+        except Exception as err:
+            logging.exception(err)
+            return False
         else:
-            is_old = False
-            no_del = False
+            return True
 
-        if config["use_wayback"] and status in ("pass", "pass-change"):
-            archive = get_archive(photo_id)
-        elif status == "fail":
-            archive = get_old_archive(photo_id)
-            if archive:
-                status = "fail-archive"
-        else:
-            archive = ""
-
-    except ProcessingError as err:
-        logger.info("Processing failed:", exc_info=err)
-        status = "error"
-        kwargs = dict(status=status, reason=err.reason_code, throttle=throttle)
-    except StopReview as err:
-        logger.info(f"Image already reviewed, contains {err.reason}")
-        status = "stop"
-        kwargs = dict(status=status, throttle=throttle)
-    except Exception as err:
-        logger.exception(err)
-        status = "error"
-        kwargs = dict(status=status, reason=repr(err), throttle=throttle)
-    else:
-        kwargs = dict(
-            photo_id=photo_id,
-            status=status,
-            author=ina_author,
-            review_license=ina_license,
-            upload_license=com_license,
-            reason=found,
-            is_old=is_old,
-            throttle=throttle,
-            archive=archive,
-            no_del=no_del,
+    def make_template(self) -> str:
+        """Constructs the iNaturalistReview template"""
+        self.lock()
+        if self.status == "stop":
+            return ""
+        template = string.Template(config[self.status])
+        text = template.safe_substitute(
+            status=self.status,
+            author=self.ina_author,
+            source_url=str(self.photo_id),
+            review_date=datetime.date.today().isoformat(),
+            reviewer=username,
+            review_license=self.ina_license,
+            upload_license=self.com_license,
+            reason=self.reason,
+            archive=self.archive,
         )
+        return text
 
-    reviewed = update_review(page, **kwargs)
-    if status == "fail" and reviewed and not no_del:
-        fail_warning(page, ina_license, is_old)
+    def save_page(self, new_text: str) -> None:
+        """Replaces the wikitext of the specified page with new_text
 
-    return reviewed
+        If the global simulate variable is true, the wikitext will be printed
+        instead of saved to Commons.
+        """
+
+        summary = string.Template(config["review_summary"]).safe_substitute(
+            status=self.status, review_license=self.ina_license, version=__version__
+        )
+        for hook in pre_save_hooks:
+            hook(
+                self, new_text=new_text, summary=summary,
+            )
+        if not simulate:
+            utils.check_runpage(site, run_override)
+            logger.info(f"Saving {self.page.title()}")
+            utils.retry(
+                utils.save_page,
+                3,
+                text=new_text,
+                page=self.page,
+                summary=summary,
+                bot=False,
+                minor=False,
+            )
+        else:
+            logger.info("Saving disabled")
+            logger.debug(summary)
+            logger.debug(new_text)
+
+    def fail_warning(self) -> None:
+        user_talk = self.uploader_talk()
+        message = string.Template(
+            config["old_fail_warn"] if self.is_old else config["fail_warn"]
+        ).safe_substitute(
+            filename=self.page.title(with_ns=True), review_license=self.ina_license
+        )
+        summary = string.Template(config["review_summary"]).safe_substitute(
+            status="fail", review_license=self.ina_license, version=__version__
+        )
+        if not simulate:
+            utils.check_runpage(site, run_override)
+            logger.info(f"Saving {user_talk.title()}")
+            utils.retry(
+                utils.save_page,
+                3,
+                text=message,
+                page=user_talk,
+                summary=summary,
+                bot=False,
+                minor=False,
+                mode="append",
+            )
+        else:
+            logger.info("Saving disabled")
+            logger.info(summary)
+            logger.info(message)
+
+    def review_file(self, throttle: Optional[utils.Throttle] = None) -> Optional[bool]:
+        """Performs a license review on the input page
+
+        inpage must be in the file namespace.
+
+        Returns None if the file was skipped
+        Returns False if there was an error during review
+        Returns True if the file was successfully reviewed (pass or fail)
+        """
+        logger.info(f"Checking {self.page.title(as_link=True)}")
+
+        utils.check_runpage(site, run_override)
+        if not self.check_can_run():
+            return None
+
+        #####
+        try:
+            self.check_stop_cats()
+            raw_obs_id, raw_photo_id = self.find_ina_id()
+            logger.info(f"ID found in wikitext: {raw_obs_id} {raw_photo_id}")
+            if raw_photo_id and not raw_obs_id:
+                raw_obs_id = get_observation_from_photo(raw_photo_id)
+            assert raw_obs_id
+            self.obs_id: iNaturalistID = raw_obs_id
+
+            self.ina_throttle = utils.Throttle(10)
+            self.photo_id: iNaturalistID = self.find_photo_in_obs(raw_photo_id)
+
+            logger.info(f"iNaturalist License: {self.ina_license}")
+            logger.info(f"Author: {self.ina_author}")
+            logger.info(f"Commons License: {self.com_license}")
+
+        except ProcessingError as err:
+            logger.info("Processing failed:", exc_info=err)
+            self.status = "error"
+            self.reason = err.reason_code
+        except StopReview as err:
+            logger.info(f"Image already reviewed, contains {err.reason}")
+            self.status = "stop"
+        except Exception as err:
+            logger.exception(err)
+            self.status = "error"
+            self.reason = repr(err)
+
+        reviewed = self.update_review()
+        if self.status == "fail" and reviewed and not self.no_del:
+            self.fail_warning()
+
+        return reviewed
 
 
 def main(
@@ -874,7 +899,8 @@ def main(
     # Enumerate starts at 0, so to get N items, count to N-1.
     if page:
         # When given a page, check only that page
-        review_file(page)
+        cpage = CommonsPage(pywikibot.FilePage(page))
+        cpage.review_file()
     else:
         # Otherwise, run automatically
         # If total is 0, run continuously.
@@ -885,13 +911,18 @@ def main(
         throttle = utils.Throttle(config.get("edit_throttle", 60))
         while (not total) or (i < total):
             for page in files_to_check(start):
+                try:
+                    cpage = CommonsPage(pywikibot.FilePage(page))
+                except ValueError:
+                    continue
+
                 if total and i >= total:
                     break
                 i += 1
 
                 try:
                     check_config()
-                    review_file(page)
+                    cpage.review_file()
                 except (pywikibot.UserBlocked, RestartBot) as err:
                     # Blocks and runpage checks always stop
                     logger.exception(err)

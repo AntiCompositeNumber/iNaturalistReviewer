@@ -24,7 +24,7 @@ import logging
 import os
 import re
 import difflib
-from typing import Sequence, Dict, Optional, Tuple
+from typing import Sequence, Dict, Optional
 
 os.environ["LOG_FILE"] = "stderr"
 
@@ -49,19 +49,6 @@ inrbot.config.update(
 )
 
 
-def id_hook(
-    page: pywikibot.Page,
-    observations: Sequence[inrbot.iNaturalistID] = [],
-    photos: Sequence[inrbot.iNaturalistID] = [],
-    **kwargs,
-):
-    try:
-        return ids[page]
-    except KeyError:
-        return ask_url(page, observations=observations, photos=photos)
-    return None
-
-
 def manual_compare(
     com_img: inrbot.CommonsImage, ina_img: inrbot.iNaturalistImage, **kwargs
 ):
@@ -71,98 +58,122 @@ def manual_compare(
         return ask_compare(com_img, ina_img)
 
 
-def check_can_run(page: pywikibot.page.BasePage) -> bool:
-    """Alternate check_can_run to monkey-patch into inrbot"""
-    if (
-        (page.title() in inrbot.skip)
-        or (not page.has_permission("edit"))
-        or (not page.botMayEdit())
-        or (not re.search("{{[iI][nN]aturalist[rR]eview", page.text))
-    ):
-        return False
-    else:
-        return True
-
-
-def pre_save(page, new_text, summary, status, review_license, **kwargs):
-    print(
-        f"{page.title(as_link=True)} reviewed with status {status} "
-        f"and license {review_license}"
-    )
-    if status == "error":
-        raise inrbot.StopReview
-
-    diff = difflib.unified_diff(
-        page.get().split("\n"), new_text.split("\n"), lineterm=""
-    )
-    print("\n".join(diff))
-    try:
-        choice = click.confirm("Save the page?", default=True)
-    except click.Abort as e:
-        raise KeyboardInterrupt from e
-    if choice:
-        return new_text, summary
-    else:
-        raise RuntimeError
-
-
-inrbot.id_hooks.append(id_hook)
-inrbot.compare_methods.insert(0, ("manual", manual_compare))
-inrbot.check_can_run = check_can_run
-inrbot.pre_save_hooks.append(pre_save)
-get_old_archive_ = inrbot.get_old_archive
-
-
-def get_old_archive(photo_id: inrbot.iNaturalistID):
-    # Archives will have already been reviewed by the archive_status_hook
-    return ""
-
-
-inrbot.get_old_archive = get_old_archive
-
-
-def archive_status_hook(
-    status: str, ina_license: str, com_license: str, photo_id: inrbot.iNaturalistID
-) -> Tuple[str, str, str]:
-    if status == "fail":
-        archive = get_old_archive_(photo_id)
-        if archive:
-            print(
-                f"This file would fail because of the {ina_license} license, "
-                f"but an archived copy is available at {archive}."
-            )
-            new_license = click.prompt("Archive license (leave blank for no change)")
-            if new_license:
-                ina_license = new_license
-                status = inrbot.check_licenses(ina_license, com_license)
-    return status, ina_license, com_license
-
-
-inrbot.status_hooks.append(archive_status_hook)
-
-
-def ask_url(
-    page: pywikibot.Page,
-    observations: Sequence[inrbot.iNaturalistID] = [],
-    photos: Sequence[inrbot.iNaturalistID] = [],
-):
-    if observations:
-        print(f"Observation ID found: {str(observations[0])}")
-    if photos:
-        print(f"Photo ID found: {str(photos[0])}")
-    
-    url = click.prompt(f"iNaturalist URL for {page.full_url()} (leave blank for no change)")
-    # TODO: Add validation
-    ina_id = inrbot.parse_ina_url(url)
-    ids[page] = ina_id
-    return ina_id
-
-
 def ask_compare(com_img: inrbot.CommonsImage, ina_img: inrbot.iNaturalistImage):
     com_img.image.show(title=com_img.page.title())
     ina_img.image.show(title=str(ina_img.id))
     res = click.confirm("Do these images match?", default=False)
     return res
+
+
+inrbot.compare_methods.insert(0, ("manual", manual_compare))
+
+
+class ManualCommonsPage(inrbot.CommonsPage):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def check_can_run(self) -> bool:
+        """Determinies if the bot should run on this page and returns a bool."""
+        page = self.page
+        if (
+            (page.title() in inrbot.skip)
+            or (not page.has_permission("edit"))
+            or (not page.botMayEdit())
+            or (not re.search("{{[iI][nN]aturalist[rR]eview", page.text))
+        ):
+            return False
+        else:
+            return True
+
+    def get_old_archive_(self):
+        return super().get_old_archive()
+
+    def get_old_archive(self):
+        # Archives will have already been reviewed by the archive_status_hook
+        return ""
+
+    def archive_status_hook(self) -> None:
+        if self._status == "fail":
+            archive = self.get_old_archive_()
+            if archive:
+                print(
+                    f"This file would fail because of the {self.ina_license} license, "
+                    f"but an archived copy is available at {archive}."
+                )
+                new_license = click.prompt(
+                    "Archive license (leave blank for no change)"
+                )
+                if new_license:
+                    self._ina_license = new_license
+                    self.archive = archive
+                    del self.status
+                    self.status
+
+    def pre_save(self, new_text, summary, **kwargs):
+        print(
+            f"{self.page.title(as_link=True)} reviewed with status {self.status} "
+            f"and license {self.ina_license}"
+        )
+        if self.status == "error":
+            raise inrbot.StopReview
+
+        diff = difflib.unified_diff(
+            self.page.get().split("\n"), new_text.split("\n"), lineterm=""
+        )
+        print("\n".join(diff))
+        try:
+            choice = click.confirm("Save the page?", default=True)
+        except click.Abort as e:
+            raise KeyboardInterrupt from e
+        if choice:
+            return new_text, summary
+        else:
+            raise RuntimeError
+
+    def id_hook(
+        self,
+        observations: Sequence[inrbot.iNaturalistID] = [],
+        photos: Sequence[inrbot.iNaturalistID] = [],
+        **kwargs,
+    ):
+        try:
+            return ids[self.page]
+        except KeyError:
+            return self.ask_url(observations=observations, photos=photos)
+        return None
+
+    def ask_url(
+        self,
+        observations: Sequence[inrbot.iNaturalistID] = [],
+        photos: Sequence[inrbot.iNaturalistID] = [],
+    ):
+        print(f"Commons page: {self.page.full_url()}")
+        if observations:
+            print(f"Observation ID found: {str(observations[0])}")
+        if photos:
+            print(f"Photo ID found: {str(photos[0])}")
+        correct_id = click.confirm("Is this ID correct?", default=True)
+        if not correct_id:
+            url = click.prompt("iNaturalist Photos URL")
+            ina_id = inrbot.parse_ina_url(url)
+            if observations:
+                self.page.text.replace(str(observations[0]), url)
+            if photos:
+                self.page.text.replace(str(photos[0]), url)
+        elif observations and not photos:
+            url = click.prompt("iNaturalist Photos URL")
+            ina_id = inrbot.parse_ina_url(url)
+        elif photos:
+            ina_id = photos[0]
+        else:
+            ina_id = None
+        ids[self.page] = ina_id
+        return ina_id
+
+
+inrbot.id_hooks.append(ManualCommonsPage.id_hook)
+inrbot.status_hooks.append(ManualCommonsPage.archive_status_hook)
+inrbot.pre_save_hooks.append(ManualCommonsPage.pre_save)
 
 
 @click.command()
@@ -176,13 +187,14 @@ def main(target, url="", simulate=False):
             site, "Category:iNaturalist images needing human review"
         )
         for page in cat.articles(namespaces=6, reverse=True):
-            inrbot.review_file(page)
+            ManualCommonsPage(pywikibot.FilePage(page)).review_file()
     else:
         page = pywikibot.FilePage(site, target)
         if url:
             # TODO: Add validation
             ids[page] = inrbot.parse_ina_url(url)
-        inrbot.review_file(page)
+
+        ManualCommonsPage(pywikibot.FilePage(page)).review_file()
 
 
 if __name__ == "__main__":

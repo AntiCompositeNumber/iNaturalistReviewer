@@ -24,7 +24,7 @@ import inspect
 import json
 import requests
 from datetime import date
-import pywikibot
+import pywikibot  # type: ignore
 import sys
 import os
 
@@ -40,39 +40,39 @@ id_tuple = inrbot.iNaturalistID
 
 
 def test_check_can_run_skip():
-    page = pywikibot.Page(inrbot.site, "File:Male.svg")
-    assert type(inrbot.skip) is set
+    page = pywikibot.FilePage(inrbot.site, "File:Male.svg")
+    cpage = inrbot.CommonsPage(page)
+    assert isinstance(inrbot.skip, set)
     inrbot.skip.add("File:Male.svg")
-    inrbot.check_can_run(page)
+    cpage.check_can_run()
     inrbot.skip.remove("File:Male.svg")
 
 
 def test_check_can_run_protected():
-    page = pywikibot.Page(inrbot.site, "Main Page")
-    assert not inrbot.check_can_run(page)
+    page = pywikibot.FilePage(inrbot.site, "File:Blocked user.svg")
+    cpage = inrbot.CommonsPage(page)
+    assert not cpage.check_can_run()
 
 
 def test_check_can_run_exclusion():
-    page = pywikibot.Page(inrbot.site, "File:Male.svg")
-    assert not inrbot.check_can_run(page)
+    page = pywikibot.FilePage(inrbot.site, "File:Male.svg")
+    cpage = inrbot.CommonsPage(page)
+    assert not cpage.check_can_run()
 
 
-def test_check_can_run_template():
-    page = mock.MagicMock()
-    page.text = "{{iNaturalistreview}}"
-    assert inrbot.check_can_run(page)
-
-
-def test_check_can_run_no_template():
-    page = mock.MagicMock()
-    page.text = "foo"
-    assert not inrbot.check_can_run(page)
-
-
-def test_check_can_run_paras():
-    page = mock.MagicMock()
-    page.text = "{{iNaturalistreview|status=error}}"
-    assert not inrbot.check_can_run(page)
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("{{iNaturalistreview}}", True),
+        ("foo", False),
+        ("{{iNaturalistreview|status=error}}", False),
+    ],
+)
+def test_check_can_run_mock(text, expected):
+    page = mock.MagicMock(spec=pywikibot.FilePage, autospec=True)
+    page.text = text
+    cpage = inrbot.CommonsPage(page)
+    assert cpage.check_can_run() == expected
 
 
 def test_check_runpage_run():
@@ -83,27 +83,12 @@ def test_check_runpage_run():
         utils.check_runpage(inrbot.site)
 
 
-def test_check_runpage_stop():
+@pytest.mark.parametrize(
+    "text", ["<!-- Set to False to stop bot. -->\nFalse", "Stop!", ""]
+)
+def test_check_runpage_stop(text):
     page = mock.MagicMock()
-    page.return_value.text = "<!-- Set to False to stop bot. -->\nFalse"
-
-    with pytest.raises(pywikibot.UserBlocked):
-        with mock.patch("pywikibot.Page", page):
-            utils.check_runpage(inrbot.site)
-
-
-def test_check_runpage_stop_anything():
-    page = mock.MagicMock()
-    page.return_value.text = "Stop!"
-
-    with pytest.raises(pywikibot.UserBlocked):
-        with mock.patch("pywikibot.Page", page):
-            utils.check_runpage(inrbot.site)
-
-
-def test_check_runpage_stop_blank():
-    page = mock.MagicMock()
-    page.return_value.text = ""
+    page.return_value.text = text
 
     with pytest.raises(pywikibot.UserBlocked):
         with mock.patch("pywikibot.Page", page):
@@ -195,7 +180,8 @@ def test_files_to_check():
 def test_find_ina_id(extlinks, expected):
     page = mock.MagicMock()
     page.extlinks.return_value = extlinks
-    ina_id = inrbot.find_ina_id(page)
+    cpage = inrbot.CommonsPage(page)
+    ina_id = cpage.find_ina_id()
     assert ina_id == expected
 
 
@@ -203,184 +189,177 @@ def test_find_ina_id(extlinks, expected):
 def test_find_ina_id_fail(extlinks):
     page = mock.MagicMock()
     page.extlinks.return_value = extlinks
+    cpage = inrbot.CommonsPage(page)
     with pytest.raises(inrbot.ProcessingError, match="nourl"):
-        inrbot.find_ina_id(page)
+        cpage.find_ina_id()
 
 
 @pytest.mark.ext_web
 def test_get_ina_data_observation():
-    ina_id = id_tuple(id="36885889", type="observations")
-    response = inrbot.get_ina_data(ina_id)
+    cpage = inrbot.CommonsPage(None)
+    cpage.obs_id = id_tuple(id="36885889", type="observations")
+    response = cpage.ina_data
     assert response
     assert type(response) is dict
 
 
 def test_get_ina_data_wrong_endpoint():
-    ina_id = id_tuple(id="anticompositenumber", type="people")
+    cpage = inrbot.CommonsPage(None)
+    cpage.obs_id = id_tuple(id="anticompositenumber", type="people")
     with pytest.raises(inrbot.ProcessingError, match="apierr"):
-        inrbot.get_ina_data(ina_id)
+        cpage.ina_data
 
 
 def test_get_ina_data_bad_data():
-    ina_id = id_tuple(id="36885889", type="observations")
+    cpage = inrbot.CommonsPage(None)
+    cpage.obs_id = id_tuple(id="36885889", type="observations")
     mock_session = mock.MagicMock()
     mock_session.get.return_value.json.return_value = {"total_results": 1}
     with mock.patch("inrbot.session", mock_session):
         with pytest.raises(inrbot.ProcessingError, match="apierr"):
-            inrbot.get_ina_data(ina_id)
+            cpage.ina_data
 
 
 def test_get_ina_data_wrong_number():
-    ina_id = id_tuple(id="36885889", type="observations")
+    cpage = inrbot.CommonsPage(None)
+    cpage.obs_id = id_tuple(id="36885889", type="observations")
     mock_session = mock.MagicMock()
     mock_session.get.return_value.json.return_value = {"total_results": 2}
     with mock.patch("inrbot.session", mock_session):
         with pytest.raises(inrbot.ProcessingError, match="apierr"):
-            inrbot.get_ina_data(ina_id)
+            cpage.ina_data
 
 
 def test_get_ina_data_error():
-    ina_id = id_tuple(id="36885889", type="observations")
+    cpage = inrbot.CommonsPage(None)
+    cpage.obs_id = id_tuple(id="36885889", type="observations")
     mock_session = mock.MagicMock()
     mock_session.get.side_effect = requests.exceptions.HTTPError
     with mock.patch("inrbot.session", mock_session):
         with pytest.raises(inrbot.ProcessingError, match="apierr"):
-            inrbot.get_ina_data(ina_id)
+            cpage.ina_data
 
 
 def test_find_photo_in_obs_notfound():
     page = mock.MagicMock()
-    obs_id = mock.MagicMock()
-    ina_data = {"photos": []}
+    cpage = inrbot.CommonsPage(page)
+    cpage.obs_id = mock.MagicMock()
+    cpage._ina_data = {"photos": []}
 
     with pytest.raises(inrbot.ProcessingError, match="notfound"):
-        inrbot.find_photo_in_obs(page, obs_id, ina_data)
+        cpage.find_photo_in_obs()
 
 
 @pytest.mark.ext_web
 @pytest.mark.parametrize("method", ["sha1", "phash"])
 def test_find_photo_in_obs_notmatching(method):
     page = pywikibot.FilePage(inrbot.site, "File:Ladona julia at Spectacle Pond.jpg")
-    obs_id = id_tuple(id="36885821", type="observations")
-    ina_data = inrbot.get_ina_data(obs_id)
+    cpage = inrbot.CommonsPage(page)
+    cpage.obs_id = id_tuple(id="36885821", type="observations")
     mock_config = {"compare_methods": [method]}
 
     with mock.patch.dict("inrbot.config", mock_config):
         inrbot.init_compare_methods()
         with pytest.raises(inrbot.ProcessingError, match="notmatching"):
-            inrbot.find_photo_in_obs(page, obs_id, ina_data)
+            cpage.find_photo_in_obs()
 
 
 @pytest.mark.ext_web
 @pytest.mark.parametrize("method", ["sha1", "phash"])
 def test_find_photo_in_obs_pass(method):
     page = pywikibot.FilePage(inrbot.site, "File:Ladona julia at Spectacle Pond.jpg")
-    obs_id = id_tuple(id="36885889", type="observations")
-    ina_data = inrbot.get_ina_data(obs_id)
+    cpage = inrbot.CommonsPage(page)
+    cpage.obs_id = id_tuple(id="36885889", type="observations")
     mock_config = {"compare_methods": [method]}
 
     with mock.patch.dict("inrbot.config", mock_config):
         inrbot.init_compare_methods()
-        photo, found = inrbot.find_photo_in_obs(page, obs_id, ina_data)
-    assert found.startswith(method)
+        photo = cpage.find_photo_in_obs()
+    assert cpage.reason.startswith(method)
     assert photo._replace(url="") == id_tuple(id="58596675", type="photos")
 
 
 @pytest.mark.ext_web
 def test_find_photo_in_obs_ignore():
     """When raw_photo_id is not in the obs, ignore it"""
-    page = mock.MagicMock()
+    cpage = inrbot.CommonsPage(None)
     mock_compare = mock.Mock(return_value=False)
-    obs_id = id_tuple(id="36885889", type="observations")
+    cpage.obs_id = id_tuple(id="36885889", type="observations")
     photo_id = id_tuple(id="12345", type="photos")
-    ina_data = inrbot.get_ina_data(obs_id)
 
     inrbot.compare_methods = [("mock", mock_compare)]
     with pytest.raises(inrbot.ProcessingError):
-        photo, found = inrbot.find_photo_in_obs(
-            page, obs_id, ina_data, raw_photo_id=photo_id
-        )
+        cpage.find_photo_in_obs(raw_photo_id=photo_id)
     assert mock_compare.call_count == 3
 
 
 @pytest.mark.ext_web
 def test_find_photo_in_obs_photo():
     """When raw_photo_id is in the obs, other photos should be skipped"""
-    page = mock.MagicMock()
+    cpage = inrbot.CommonsPage(None)
     mock_compare = mock.Mock(return_value=False)
-    obs_id = id_tuple(id="36885889", type="observations")
+    cpage.obs_id = id_tuple(id="36885889", type="observations")
     photo_id = id_tuple(id="58596679", type="photos")
-    ina_data = inrbot.get_ina_data(obs_id)
 
     inrbot.compare_methods = [("mock", mock_compare)]
     with pytest.raises(inrbot.ProcessingError):
-        photo, found = inrbot.find_photo_in_obs(
-            page, obs_id, ina_data, raw_photo_id=photo_id
-        )
+        cpage.find_photo_in_obs(raw_photo_id=photo_id)
     assert mock_compare.call_count == 1
 
 
-def test_find_ina_license():
+def test_ina_license():
+    cpage = inrbot.CommonsPage(None)
     with open(test_data_dir + "/ina_response.json") as f:
-        ina_data = json.load(f)
-    photo = id_tuple(id="22483426", type="photos")
-    assert inrbot.find_ina_license(ina_data, photo) == "Cc-by-4.0"
+        cpage._ina_data = json.load(f)
+    cpage.photo_id = id_tuple(id="22483426", type="photos")
+    assert cpage.ina_license == "Cc-by-4.0"
 
 
-def test_find_ina_license_fail():
+def test_ina_license_fail():
+    cpage = inrbot.CommonsPage(None)
     with open(test_data_dir + "/ina_response.json") as f:
-        ina_data = json.load(f)
-    photo = id_tuple(id="12345", type="photos")
+        cpage._ina_data = json.load(f)
+    cpage.photo_id = id_tuple(id="12345", type="photos")
     with pytest.raises(inrbot.ProcessingError, match="inatlicense"):
-        inrbot.find_ina_license(ina_data, photo)
+        cpage.ina_license
 
 
-def test_find_ina_author():
+def test_ina_author():
+    cpage = inrbot.CommonsPage(None)
     with open(test_data_dir + "/ina_response.json") as f:
-        ina_data = json.load(f)
-    assert inrbot.find_ina_author(ina_data) == "dannaguevara"
+        cpage._ina_data = json.load(f)
+    assert cpage.ina_author == "dannaguevara"
 
 
-def test_find_com_license_found():
+def test_com_license_found():
     site = pywikibot.Site("commons", "commons")
-    page = pywikibot.Page(site, "File:Commons-logo-en.svg")
-    license = inrbot.find_com_license(page)
-    assert license == "Cc-by-sa-3.0"
+    page = pywikibot.FilePage(site, "File:Commons-logo-en.svg")
+    cpage = inrbot.CommonsPage(page)
+    assert cpage.com_license == "Cc-by-sa-3.0"
 
 
-def test_find_com_license_none():
+def test_com_license_none():
     site = pywikibot.Site("commons", "commons")
     page = pywikibot.Page(site, "COM:PCP")
+    cpage = inrbot.CommonsPage(page)
     with pytest.raises(inrbot.ProcessingError, match="comlicense"):
-        inrbot.find_com_license(page)
+        cpage.com_license
 
 
-def test_check_licenses_pass():
-    ina_license = "Cc-by-4.0"
-    com_license = "Cc-by-4.0"
-    result = inrbot.check_licenses(ina_license, com_license)
-    assert result == "pass"
-
-
-def test_check_licenses_pass_change():
-    ina_license = "Cc-by-sa-4.0"
-    com_license = "Cc-by-4.0"
-    result = inrbot.check_licenses(ina_license, com_license)
-    assert result == "pass-change"
-
-
-def test_check_licenses_fail():
-    ina_license = "Cc-by-nd-4.0"
-    com_license = "Cc-by-4.0"
-    result = inrbot.check_licenses(ina_license, com_license)
-    assert result == "fail"
-
-
-def test_check_licenses_error():
-    ina_license = ""
-    com_license = ""
-    result = inrbot.check_licenses(ina_license, com_license)
-    assert result == "error"
+@pytest.mark.parametrize(
+    "ina_license,com_license,expected",
+    [
+        ("Cc-by-4.0", "Cc-by-4.0", "pass"),
+        ("Cc-by-sa-4.0", "Cc-by-4.0", "pass-change"),
+        ("Cc-by-nd-4.0", "Cc-by-4.0", "fail"),
+        ("", "", "error"),
+    ],
+)
+def test_status(ina_license, com_license, expected):
+    cpage = inrbot.CommonsPage(None)
+    cpage.ina_license = ina_license
+    cpage.com_license = com_license
+    assert cpage.status == expected
 
 
 @pytest.mark.parametrize(
@@ -390,9 +369,9 @@ def test_check_licenses_error():
             test_data_dir + "/section.txt",
             dict(
                 status="pass",
-                author="Author",
-                review_license="Cc-by-sa-4.0",
-                upload_license="Cc-by-sa-4.0",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="Cc-by-sa-4.0",
                 reason="sha1",
             ),
             (
@@ -407,9 +386,9 @@ def test_check_licenses_error():
             test_data_dir + "/section.txt",
             dict(
                 status="fail",
-                author="Author",
-                review_license="Cc-by-nd-4.0",
-                upload_license="Cc-by-sa-4.0",
+                ina_author="Author",
+                ina_license="Cc-by-nd-4.0",
+                com_license="Cc-by-sa-4.0",
                 reason="sha1",
             ),
             (
@@ -423,9 +402,9 @@ def test_check_licenses_error():
             test_data_dir + "/section.txt",
             dict(
                 status="fail",
-                author="Author",
-                review_license="Cc-by-nd-4.0",
-                upload_license="Cc-by-sa-4.0",
+                ina_author="Author",
+                ina_license="Cc-by-nd-4.0",
+                com_license="Cc-by-sa-4.0",
                 reason="sha1",
                 is_old=True,
             ),
@@ -449,9 +428,9 @@ def test_check_licenses_error():
             test_data_dir + "/section_newline.txt",
             dict(
                 status="pass",
-                author="Author",
-                review_license="Cc-by-sa-4.0",
-                upload_license="Cc-by-sa-4.0",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="Cc-by-sa-4.0",
                 reason="sha1",
             ),
             (
@@ -466,9 +445,9 @@ def test_check_licenses_error():
             test_data_dir + "/section_change.txt",
             dict(
                 status="pass-change",
-                author="Author",
-                review_license="Cc-by-sa-4.0",
-                upload_license="Cc-by-4.0",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="Cc-by-4.0",
                 reason="sha1",
             ),
             (
@@ -484,9 +463,9 @@ def test_check_licenses_error():
             test_data_dir + "/para.txt",
             dict(
                 status="pass",
-                author="Author",
-                review_license="Cc-by-sa-4.0",
-                upload_license="Cc-by-sa-4.0",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="Cc-by-sa-4.0",
                 reason="sha1",
             ),
             (
@@ -501,9 +480,9 @@ def test_check_licenses_error():
             test_data_dir + "/para_change.txt",
             dict(
                 status="pass-change",
-                author="Author",
-                review_license="Cc-by-sa-4.0",
-                upload_license="Cc-by-4.0",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="Cc-by-4.0",
                 reason="sha1",
             ),
             (
@@ -520,9 +499,9 @@ def test_check_licenses_error():
             test_data_dir + "/free.txt",
             dict(
                 status="pass",
-                author="Author",
-                review_license="Cc-by-sa-4.0",
-                upload_license="Cc-by-sa-4.0",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="Cc-by-sa-4.0",
                 reason="sha1",
             ),
             (
@@ -537,9 +516,9 @@ def test_check_licenses_error():
             test_data_dir + "/free_change.txt",
             dict(
                 status="pass-change",
-                author="Author",
-                review_license="Cc-by-sa-4.0",
-                upload_license="Cc-by-4.0",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="Cc-by-4.0",
                 reason="sha1",
             ),
             (
@@ -554,9 +533,9 @@ def test_check_licenses_error():
             test_data_dir + "/self.txt",
             dict(
                 status="pass",
-                author="Author",
-                review_license="Cc-by-sa-4.0",
-                upload_license="Cc-by-sa-4.0",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="Cc-by-sa-4.0",
                 reason="sha1",
             ),
             (
@@ -571,9 +550,9 @@ def test_check_licenses_error():
             test_data_dir + "/self_change.txt",
             dict(
                 status="pass-change",
-                author="Author",
-                review_license="Cc-by-sa-4.0",
-                upload_license="Cc-by-4.0",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="Cc-by-4.0",
                 reason="sha1",
             ),
             (
@@ -589,9 +568,9 @@ def test_check_licenses_error():
             test_data_dir + "/both_change.txt",
             dict(
                 status="pass-change",
-                author="Author",
-                review_license="Cc-by-sa-4.0",
-                upload_license="Cc-by-4.0",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="Cc-by-4.0",
                 reason="sha1",
             ),
             (
@@ -607,9 +586,9 @@ def test_check_licenses_error():
             test_data_dir + "/wrapper_change.txt",
             dict(
                 status="pass-change",
-                author="Author",
-                review_license="Cc-by-sa-4.0",
-                upload_license="Cc-by-4.0",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="Cc-by-4.0",
                 reason="sha1",
             ),
             (
@@ -627,17 +606,23 @@ def test_update_review(filename, kwargs, compare):
     page = mock.Mock()
     with open(filename) as f:
         page.text = f.read()
+    cpage = inrbot.CommonsPage(page)
     photo_id = id_tuple(type="photos", id="11505950")
     if kwargs.get("photo_id", "") is not None:
         kwargs["photo_id"] = photo_id
-    kwargs["archive"] = f"archive({kwargs['photo_id']})"
+
+    cpage.archive = f"archive({kwargs['photo_id']})"
+    kwargs.setdefault("no_del", False)
+    kwargs.setdefault("is_old", False)
+    for key, value in kwargs.items():
+        setattr(cpage, key, value)
 
     save_page = mock.Mock()
-    with mock.patch("inrbot.save_page", save_page):
-        inrbot.update_review(page, **kwargs)
+    cpage.save_page = save_page
+    cpage.update_review()
 
     save_page.assert_called_once
-    new_text = save_page.call_args[0][1]
+    new_text = save_page.call_args[0][0]
     assert compare in new_text
     assert "{{cc by 4.0}}" not in new_text
     assert "{{cc-by-4.0}}" not in new_text
@@ -651,30 +636,34 @@ def test_update_review(filename, kwargs, compare):
 def test_update_review_broken():
     page = mock.Mock()
     page.text = "Foo"
-    photo_id = id_tuple(type="photos", id="11505950")
-    result = inrbot.update_review(
-        page,
-        photo_id,
+    cpage = inrbot.CommonsPage(page)
+    kwargs = dict(
+        photo_id=id_tuple(type="photos", id="11505950"),
         status="pass",
-        author="Author",
-        review_license="Cc-by-sa-4.0",
-        upload_license="Cc-by-sa-4.0",
+        ina_author="Author",
+        ina_license="Cc-by-sa-4.0",
+        com_license="Cc-by-sa-4.0",
         reason="sha1",
     )
-    assert result is False
+    for key, value in kwargs.items():
+        setattr(cpage, key, value)
+    assert cpage.update_review() is False
 
 
 def test_make_template():
+    cpage = inrbot.CommonsPage(None)
     photo_id = id_tuple(type="photos", id="11505950")
-    template = inrbot.make_template(
-        photo_id,
+    kwargs = dict(
+        photo_id=photo_id,
         status="pass",
-        author="Author",
-        review_license="Cc-by-sa-4.0",
-        upload_license="Cc-by-sa-4.0",
+        ina_author="Author",
+        ina_license="Cc-by-sa-4.0",
+        com_license="Cc-by-sa-4.0",
         reason="sha1",
         archive=f"archive({photo_id})",
     )
+    for key, value in kwargs.items():
+        setattr(cpage, key, value)
     compare = (
         "{{iNaturalistReview |status=pass |author=Author "
         "|sourceurl=https://www.inaturalist.org/photos/11505950 "
@@ -682,20 +671,23 @@ def test_make_template():
         f"|reviewdate={date.today().isoformat()} "
         "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
     )
-    assert str(template) == compare
+    assert cpage.make_template() == compare
 
 
 def test_make_template_change():
+    cpage = inrbot.CommonsPage(None)
     photo_id = id_tuple(type="photos", id="11505950")
-    template = inrbot.make_template(
-        photo_id,
+    kwargs = dict(
+        photo_id=photo_id,
         status="pass-change",
-        author="Author",
-        review_license="Cc-by-sa-4.0",
-        upload_license="Cc-by-4.0",
+        ina_author="Author",
+        ina_license="Cc-by-sa-4.0",
+        com_license="Cc-by-4.0",
         reason="sha1",
         archive=f"archive({photo_id})",
     )
+    for key, value in kwargs.items():
+        setattr(cpage, key, value)
     compare = (
         "{{iNaturalistReview |status=pass-change |author=Author "
         "|sourceurl=https://www.inaturalist.org/photos/11505950 "
@@ -704,68 +696,73 @@ def test_make_template_change():
         "|reviewer=iNaturalistReviewBot "
         "|reviewlicense=Cc-by-sa-4.0 |uploadlicense=Cc-by-4.0 |reason=sha1}}"
     )
-    assert str(template) == compare
+    assert cpage.make_template() == compare
 
 
 def test_save_page_save():
     page = mock.MagicMock()
+    cpage = inrbot.CommonsPage(page)
     new_text = "new_text"
-    status = "statusstatus"
-    review_license = "licensereview"
+    cpage.status = "statusstatus"
+    cpage.ina_license = "licensereview"
 
     inrbot.simulate = False
-    inrbot.save_page(page, new_text, status, review_license)
+    cpage.save_page(new_text)
     assert page.text == new_text
     page.save.assert_called_once()
     summary = page.save.call_args[1]["summary"]
-    assert status in summary
-    assert review_license in summary
+    assert cpage.status in summary
+    assert cpage.ina_license in summary
 
 
 def test_save_page_sim():
     page = mock.MagicMock()
+    cpage = inrbot.CommonsPage(page)
     new_text = "new_text"
-    status = "statusstatus"
-    review_license = "licensereview"
+    cpage.status = "statusstatus"
+    cpage.ina_license = "licensereview"
 
     inrbot.simulate = True
-    inrbot.save_page(page, new_text, status, review_license)
+    cpage.save_page(new_text)
     page.save.assert_not_called()
 
 
-def test_get_author_talk():
+def test_uploader_talk():
     page = pywikibot.FilePage(inrbot.site, "File:17slemdal efn.jpg")
+    cpage = inrbot.CommonsPage(page)
     user_talk = pywikibot.Page(inrbot.site, "User talk:Espen Franck-Nielsen")
-    assert inrbot.get_author_talk(page) == user_talk
+    assert cpage.uploader_talk() == user_talk
 
 
 @pytest.mark.parametrize("is_old", [False, True])
 def test_fail_warning(is_old):
     file_page = mock.MagicMock()
+    cpage = inrbot.CommonsPage(file_page)
     page = mock.Mock()
     page.text = "old_text"
     page.get.return_value = page.text
     mock_get_author_talk = mock.Mock(return_value=page)
-    review_license = "licensereview"
+    cpage.uploader_talk = mock_get_author_talk
+    cpage.ina_license = "licensereview"
+    cpage.is_old = is_old
 
     inrbot.simulate = False
-    with mock.patch("inrbot.get_author_talk", mock_get_author_talk):
-        inrbot.fail_warning(file_page, review_license, is_old)
+    cpage.fail_warning()
 
-    mock_get_author_talk.assert_called_once_with(file_page)
+    mock_get_author_talk.assert_called_once_with()
 
     assert "old_text" in page.text
     if is_old:
         assert inrbot.config["old_fail_warn"][:26] in page.text
     else:
         assert inrbot.config["fail_warn"][:21] in page.text
-    assert review_license in page.text
+    assert cpage.ina_license in page.text
     assert "~~~~" in page.text
     page.save.assert_called_once()
 
     summary = page.save.call_args[1]["summary"]
     assert "fail" in summary
-    assert review_license in summary
+    assert cpage.ina_license in summary
 
 
 @pytest.mark.ext_web
@@ -788,93 +785,111 @@ def test_file_is_old(conf, expected):
     mock_page.latest_file_info.timestamp = datetime.datetime.now() - datetime.timedelta(
         days=60
     )
+    cpage = inrbot.CommonsPage(mock_page)
+    cpage.status = "fail"
     with mock.patch.dict("inrbot.config", conf):
-        result = inrbot.file_is_old(mock_page)
+        result = cpage.is_old
     assert result is expected
 
 
 def test_main_auto_total():
+    mock_cpage = mock.MagicMock()
     review_file = mock.MagicMock()
+    mock_cpage.return_value.review_file = review_file
     sleep = mock.MagicMock()
     files_to_check = mock.MagicMock(return_value=range(0, 10))
     total = 4
 
-    with mock.patch("inrbot.review_file", review_file):
+    with mock.patch("inrbot.CommonsPage", mock_cpage):
         with mock.patch("time.sleep", sleep):
             with mock.patch("inrbot.files_to_check", files_to_check):
-                inrbot.main(total=total)
+                with mock.patch("pywikibot.FilePage", lambda arg: arg):
+                    inrbot.main(total=total)
 
     assert review_file.call_count == total
 
 
 def test_main_auto_end():
+    mock_cpage = mock.MagicMock()
     review_file = mock.MagicMock()
+    mock_cpage.return_value.review_file = review_file
     sleep = mock.MagicMock()
     files_to_check = mock.MagicMock(return_value=range(0, 3))
     total = 7
 
-    with mock.patch("inrbot.review_file", review_file):
+    with mock.patch("inrbot.CommonsPage", mock_cpage):
         with mock.patch("time.sleep", sleep):
             with mock.patch("inrbot.files_to_check", files_to_check):
-                inrbot.main(total=total)
+                with mock.patch("pywikibot.FilePage", lambda arg: arg):
+                    inrbot.main(total=total)
 
     assert review_file.call_count == total
 
 
 def test_main_auto_blocked():
     # Runpage fails and actually being blocked should stop the bot.
+    mock_cpage = mock.MagicMock()
     review_file = mock.MagicMock()
     review_file.side_effect = pywikibot.UserBlocked("Runpage is false!")
+    mock_cpage.return_value.review_file = review_file
     sleep = mock.MagicMock()
     files_to_check = mock.MagicMock(return_value=range(0, 10))
 
-    with mock.patch("inrbot.review_file", review_file):
+    with mock.patch("inrbot.CommonsPage", mock_cpage):
         with mock.patch("time.sleep", sleep):
             with mock.patch("inrbot.files_to_check", files_to_check):
-                with pytest.raises(pywikibot.UserBlocked):
-                    inrbot.main(total=1)
+                with mock.patch("pywikibot.FilePage", lambda arg: arg):
+                    with pytest.raises(pywikibot.UserBlocked):
+                        inrbot.main(total=1)
 
     sleep.assert_not_called()
 
 
 def test_main_auto_exception_continue():
     # Other exceptions can be handled
+    mock_cpage = mock.MagicMock()
     review_file = mock.MagicMock()
     review_file.side_effect = [ValueError, None, None]
+    mock_cpage.return_value.review_file = review_file
     sleep = mock.MagicMock()
     files_to_check = mock.MagicMock(return_value=range(0, 10))
     total = 3
 
-    with mock.patch("inrbot.review_file", review_file):
+    with mock.patch("inrbot.CommonsPage", mock_cpage):
         with mock.patch("time.sleep", sleep):
             with mock.patch("inrbot.files_to_check", files_to_check):
-                inrbot.main(total=total)
+                with mock.patch("pywikibot.FilePage", lambda arg: arg):
+                    inrbot.main(total=total)
 
     assert review_file.call_count == total
 
 
 def test_main_auto_exception_stop():
     # Other exceptions can be handled
+    mock_cpage = mock.MagicMock()
     review_file = mock.MagicMock()
     review_file.side_effect = ValueError
+    mock_cpage.return_value.review_file = review_file
     sleep = mock.MagicMock()
     files_to_check = mock.MagicMock(return_value=range(0, 10))
     total = 2
 
-    with mock.patch("inrbot.review_file", review_file):
+    with mock.patch("inrbot.CommonsPage", mock_cpage):
         with mock.patch("time.sleep", sleep):
             with mock.patch("inrbot.files_to_check", files_to_check):
-                with pytest.raises(ValueError):
-                    inrbot.main(total=total)
+                with mock.patch("pywikibot.FilePage", lambda arg: arg):
+                    with pytest.raises(ValueError):
+                        inrbot.main(total=total)
 
     assert review_file.call_count == total
 
 
 def test_main_single():
-    review_file = mock.MagicMock()
+    mock_cpage = mock.MagicMock()
     page = mock.MagicMock()
 
-    with mock.patch("inrbot.review_file", review_file):
-        inrbot.main(page=page)
+    with mock.patch("inrbot.CommonsPage", mock_cpage):
+        with mock.patch("pywikibot.FilePage", lambda arg: arg):
+            inrbot.main(page=page)
 
-    review_file.assert_called_once_with(page)
+    mock_cpage.assert_called_once_with(page)
