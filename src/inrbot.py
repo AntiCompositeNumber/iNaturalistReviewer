@@ -374,6 +374,7 @@ class CommonsPage:
         self._archive = ""
         self.throttle = throttle
         self.reason = ""
+        self._photo_id: Optional[iNaturalistID] = None
         self._locked = False
 
     @property
@@ -457,6 +458,14 @@ class CommonsPage:
             raise ProcessingError("nourl", "No observation ID could be found")
 
     @property
+    def photo_id(self) -> Optional[iNaturalistID]:
+        return self._photo_id
+
+    @photo_id.setter
+    def photo_id(self, value: iNaturalistID):
+        self._set_locking("_photo_id", value)
+
+    @property
     def ina_data(self) -> dict:
         """Make API request to iNaturalist from an ID and ID type
 
@@ -500,6 +509,7 @@ class CommonsPage:
             if self.locked:
                 self._ina_license = ""
             else:
+                assert self.photo_id
                 licenses = config["ina_licenses"]
                 photos: list = self.ina_data.get("photos", [])
                 for photo_data in photos:
