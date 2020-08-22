@@ -946,6 +946,7 @@ class CommonsPage:
             self.find_photo_in_obs()
             self.compare_licenses()
             self.get_ina_author()
+            self.archive
 
         except ProcessingError as err:
             logger.info("Processing failed:", exc_info=err)
