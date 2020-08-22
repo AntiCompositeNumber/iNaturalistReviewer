@@ -75,6 +75,25 @@ def test_check_can_run_mock(text, expected):
     assert cpage.check_can_run() == expected
 
 
+def test_check_stop_cats_stop():
+    page = mock.MagicMock(spec=pywikibot.FilePage, autospec=True)
+    cat = pywikibot.Category(
+        inrbot.site, "Category:Items with OTRS permission confirmed"
+    )
+    page.categories.return_value = [cat]
+    cpage = inrbot.CommonsPage(page)
+    with pytest.raises(inrbot.StopReview):
+        cpage.check_stop_cats()
+
+
+def test_check_stop_cats_go():
+    page = mock.MagicMock(spec=pywikibot.FilePage, autospec=True)
+    cat = pywikibot.Category(inrbot.site, "Category:INaturalist review needed")
+    page.categories.return_value = [cat]
+    cpage = inrbot.CommonsPage(page)
+    cpage.check_stop_cats()
+
+
 def test_check_runpage_run():
     page = mock.MagicMock()
     page.return_value.text = "<!-- Set to False to stop bot. -->\nTrue"

@@ -770,9 +770,13 @@ class CommonsPage:
     @property
     def archive(self) -> str:
         if not self._archive:
-            if config["use_wayback"] and self.status in ("pass", "pass-change"):
-                self.save_archive()
-            elif self.status == "fail":
+            if config.get("use_wayback") and self.status in ("pass", "pass-change"):
+                self.get_old_archive()
+                if not self._archive:
+                    self.save_archive()
+            elif self.status == "fail" or (
+                self.status != "error" and config.get("wayback_get", True)
+            ):
                 self.get_old_archive()
         return self._archive
 
@@ -784,20 +788,19 @@ class CommonsPage:
         try:
             archive = waybackpy.Url(str(self.photo_id), user_agent).save()
         except Exception as err:
-            logger.warn("Failed to get archive")
-            logger.exception(err)
+            logger.warn("Failed to get archive", exc_info=err)
             archive = ""
         self.archive = archive
 
     def get_old_archive(self) -> None:
         try:
-            archive = waybackpy.Url(str(self.photo_id), user_agent).oldest()
+            self.archive = waybackpy.Url(str(self.photo_id), user_agent).oldest()
         except Exception as err:
-            logger.warn("Failed to get archive", exc_info=err)
-            archive = ""
+            logger.info("Failed to get archive", exc_info=err)
+            self.archive = ""
         else:
-            self.archive = archive
-            self.status = "fail-archive"
+            if self.status == "fail":
+                self.status = "fail-archive"
 
     def uploader_talk(self) -> pywikibot.page.Page:
         return pywikibot.Page(site, f"User talk:{self.page.oldest_file_info.user}")

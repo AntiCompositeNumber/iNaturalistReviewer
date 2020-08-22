@@ -46,6 +46,7 @@ inrbot.config.update(
         "$status $review_license (inrcli $version)",
         "old_fail_warn": "\n\n{{subst:image permission|1=$filename}} "
         "License review not passed: iNaturalist author is using $review_license. ~~~~",
+        "use_wayback": True,
     }
 )
 
@@ -60,8 +61,9 @@ def manual_compare(
 
 
 def ask_compare(com_img: inrbot.CommonsImage, ina_img: inrbot.iNaturalistImage):
-    com_img.image.show(title=com_img.page.title())
-    ina_img.image.show(title=str(ina_img.id))
+    if click.confirm(f"Show {ina_img.id}?", default=False):
+        com_img.image.show(title=com_img.page.title())
+        ina_img.image.show(title=str(ina_img.id))
     res = click.confirm("Do these images match?", default=False)
     return res
 
@@ -91,6 +93,8 @@ class ManualCommonsPage(inrbot.CommonsPage):
 
     def get_old_archive(self):
         # Archives will have already been reviewed by the archive_status_hook
+        if self.status != "fail":
+            return super().get_old_archive()
         return ""
 
     def archive_status_hook(self) -> None:
@@ -159,7 +163,7 @@ class ManualCommonsPage(inrbot.CommonsPage):
             if photos:
                 self.page.text = self.page.text.replace(str(photos[0]), url)
         elif observations and not photos:
-            url = click.prompt("iNaturalist Photos URL")
+            url = click.prompt("iNaturalist Photos URL", default="")
             ina_id = inrbot.parse_ina_url(url)
         elif photos:
             ina_id = photos[0]
