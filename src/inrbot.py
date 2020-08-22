@@ -43,7 +43,7 @@ from typing import Any
 
 import utils
 
-__version__ = "2.0.2"
+__version__ = "2.0.4"
 
 logging.config.dictConfig(
     utils.logger_config("inrbot", level="VERBOSE", filename="inrbot.log")
@@ -830,7 +830,10 @@ class CommonsPage:
                 0,
                 string.Template(
                     config["old_fail_tag"] if self.is_old else config["fail_tag"]
-                ).safe_substitute(review_license=self.ina_license),
+                ).safe_substitute(
+                    review_license=self.ina_license,
+                    source_url=str(self.photo_id) if self.photo_id else "",
+                ),
             )
 
         if self.throttle is not None:
@@ -898,7 +901,9 @@ class CommonsPage:
         message = string.Template(
             config["old_fail_warn"] if self.is_old else config["fail_warn"]
         ).safe_substitute(
-            filename=self.page.title(with_ns=True), review_license=self.ina_license
+            filename=self.page.title(with_ns=True),
+            review_license=self.ina_license,
+            source_url=str(self.photo_id) if self.photo_id else "",
         )
         summary = string.Template(config["review_summary"]).safe_substitute(
             status="fail", review_license=self.ina_license, version=__version__
