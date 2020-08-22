@@ -43,7 +43,7 @@ from typing import Any
 
 import utils
 
-__version__ = "2.0.1"
+__version__ = "2.0.2"
 
 logging.config.dictConfig(
     utils.logger_config("inrbot", level="VERBOSE", filename="inrbot.log")
@@ -85,6 +85,8 @@ class iNaturalistID(NamedTuple):
     def __eq__(self, other):
         if isinstance(other, iNaturalistID):
             return self.id == other.id and self.type == other.type
+        elif isinstance(other, iNaturalistImage):
+            return self.id == other.id.id and self.type == other.id.type
         else:
             return NotImplemented
 
@@ -185,6 +187,20 @@ class Image:
     @property
     def image(self):
         raise NotImplementedError
+
+    def __repr__(self) -> str:
+        paras = ", ".join(
+            f"{key}={repr(value)}" for key, value in self.__dict__.items()
+        )
+        return f"{type(self).__name__}({paras})"
+
+    def __eq__(self, other):
+        if isinstance(other, Image):
+            return self.id == other.id
+        elif isinstance(other, iNaturalistID):
+            return self.id == other
+        else:
+            return NotImplemented
 
 
 class iNaturalistImage(Image):
@@ -361,7 +377,10 @@ def get_observation_from_photo(photo_id: iNaturalistID) -> iNaturalistID:
 
 class CommonsPage:
     def __init__(
-        self, page: pywikibot.FilePage, throttle: Optional[utils.Throttle] = None
+        self,
+        page: pywikibot.FilePage,
+        throttle: Optional[utils.Throttle] = None,
+        ina_throttle: utils.Throttle = utils.Throttle(10),
     ) -> None:
         self.page = page
         self._com_license: Optional[str] = None
@@ -373,9 +392,13 @@ class CommonsPage:
         self._no_del: Optional[bool] = None
         self._archive = ""
         self.throttle = throttle
+        self.ina_throttle = ina_throttle
         self.reason = ""
         self._photo_id: Optional[iNaturalistID] = None
+        self._raw_photo_id: Optional[iNaturalistID] = None
+        self._obs_id: Optional[iNaturalistID] = None
         self._locked = False
+        self.photo_id_source = ""
 
     @property
     def locked(self) -> bool:
@@ -397,6 +420,16 @@ class CommonsPage:
             setattr(self, attr, value)
         else:
             raise TypeError(f"{attr[1:]} has already been read, and can not be changed")
+
+    def _get_locking_str(self, attr: str, setter: Optional[Callable] = None) -> str:
+        if getattr(self, attr) is None:
+            if self.locked:
+                setattr(self, attr, "")
+            elif setter is not None:
+                setter()
+            else:
+                raise AttributeError(attr[1:])
+        return getattr(self, attr)
 
     def check_can_run(self) -> bool:
         """Determinies if the bot should run on this page and returns a bool."""
@@ -420,7 +453,7 @@ class CommonsPage:
         if page_stop:
             raise StopReview(str(page_stop))
 
-    def find_ina_id(self) -> Tuple[Optional[iNaturalistID], Optional[iNaturalistID]]:
+    def find_ina_id(self) -> None:
         """Returns an iNaturalistID tuple from wikitext"""
         photos = []
         observations = []
@@ -450,11 +483,14 @@ class CommonsPage:
                 observations = []
 
         if photos and observations:
-            return observations[0], photos[0]
+            self.obs_id = observations[0]
+            self.raw_photo_id = photos[0]
         elif observations:
-            return observations[0], None
+            self.obs_id = observations[0]
+            self.raw_photo_id = None
         elif photos:
-            return None, photos[0]
+            self.obs_id = None
+            self.raw_photo_id = photos[0]
         else:
             raise ProcessingError("nourl", "No observation ID could be found")
 
@@ -467,15 +503,42 @@ class CommonsPage:
         self._set_locking("_photo_id", value)
 
     @property
+    def raw_photo_id(self) -> Optional[iNaturalistID]:
+        return self._raw_photo_id
+
+    @raw_photo_id.setter
+    def raw_photo_id(self, value: iNaturalistID):
+        self._raw_photo_id = value
+
+    @property
+    def obs_id(self) -> Optional[iNaturalistID]:
+        if not self._obs_id and not self.locked:
+            if self.raw_photo_id:
+                self._obs_id = get_observation_from_photo(self.raw_photo_id)
+        return self._obs_id
+
+    @obs_id.setter
+    def obs_id(self, value: iNaturalistID) -> None:
+        self._set_locking("_obs_id", value)
+
+    @obs_id.deleter
+    def obs_id(self) -> None:
+        if not self.locked:
+            self._obs_id = None
+            del self.ina_data
+        else:
+            raise TypeError
+
+    @property
     def ina_data(self) -> dict:
         """Make API request to iNaturalist from an ID and ID type
 
         Returns a dict of the API result
         """
         if not self._ina_data:
-            ina_id = self.obs_id
-            if ina_id.type == "observations":
-                url = f"https://api.inaturalist.org/v1/observations/{ina_id.id}"
+            assert self.obs_id
+            if self.obs_id.type == "observations":
+                url = f"https://api.inaturalist.org/v1/observations/{self.obs_id.id}"
             else:
                 raise ProcessingError("apierr", "iNaturalist ID is wrong type")
 
@@ -496,8 +559,11 @@ class CommonsPage:
                 self._ina_data = res
         return self._ina_data
 
-    @property
-    def ina_license(self) -> str:
+    @ina_data.deleter
+    def ina_data(self) -> None:
+        self._ina_data = {}
+
+    def get_ina_license(self):
         """Find the image license in the iNaturalist API response
 
         If a license is found, the Commons template name is returned.
@@ -506,38 +572,34 @@ class CommonsPage:
         The API does not return CC version numbers, but the website has 4.0 links.
         CC 4.0 licenses are assumed.
         """
-        if self._ina_license is None:
-            if self.locked:
-                self._ina_license = ""
-            else:
-                assert self.photo_id
-                licenses = config["ina_licenses"]
-                photos: list = self.ina_data.get("photos", [])
-                for photo_data in photos:
-                    if str(photo_data.get("id")) == self.photo_id.id:
-                        license_code = photo_data.get("license_code", "null")
-                        break
-                else:
-                    raise ProcessingError("inatlicense", "No iNaturalist license found")
+        assert self.photo_id
+        licenses = config["ina_licenses"]
+        photos: list = self.ina_data.get("photos", [])
+        for photo_data in photos:
+            if str(photo_data.get("id")) == self.photo_id.id:
+                license_code = photo_data.get("license_code", "null")
+                break
+        else:
+            raise ProcessingError("inatlicense", "No iNaturalist license found")
 
-                if not license_code:
-                    license_code = "null"
+        if not license_code:
+            license_code = "null"
 
-                try:
-                    self._ina_license = licenses[license_code]
-                except KeyError as e:
-                    raise ProcessingError(
-                        "inatlicense", "No iNaturalist license found"
-                    ) from e
-        return self._ina_license
+        try:
+            self.ina_license = licenses[license_code]
+        except KeyError as e:
+            raise ProcessingError("inatlicense", "No iNaturalist license found") from e
+        logger.info(f"iNaturalist License: {self.ina_license}")
+
+    @property
+    def ina_license(self) -> str:
+        return self._get_locking_str("_ina_license", self.get_ina_license)
 
     @ina_license.setter
     def ina_license(self, value: str) -> None:
         self._set_locking("_ina_license", value)
 
-    def find_photo_in_obs(
-        self, raw_photo_id: Optional[iNaturalistID] = None
-    ) -> iNaturalistID:
+    def find_photo_in_obs(self, recurse: bool = True) -> None:
         """Find the matching image in an iNaturalist observation
 
         Returns an iNaturalistID named tuple with the photo ID.
@@ -550,10 +612,11 @@ class CommonsPage:
         ]
         if len(images) < 1:
             raise ProcessingError("notfound", "No photos in observation")
-        elif raw_photo_id:
-            filt_images = [image for image in images if image.id == raw_photo_id]
-            if len(filt_images) > 0:
-                images = filt_images
+        elif self.raw_photo_id:
+            # False sorts before True, otherwise remains in original order
+            # This will sort the matching photo before other photos in the obs,
+            # but will still check those other images if no match.
+            images.sort(key=lambda image: self.raw_photo_id != image)
 
         commons_image = CommonsImage(page=self.page)
 
@@ -568,11 +631,19 @@ class CommonsPage:
                 if res:
                     logger.info(f"Match found: {str(image.id)}")
                     self.reason = comp_method
-                    return image.id
+                    self.photo_id = image.id
+                    return
                 elif self.throttle:
                     self.throttle.throttle()
+        if self.raw_photo_id and self.raw_photo_id not in images and recurse:
+            del self.obs_id
+            self.find_photo_in_obs(recurse=False)
+        else:
+            raise ProcessingError("notmatching", "No matching photos found")
 
-        raise ProcessingError("notmatching", "No matching photos found")
+    def get_ina_author(self):
+        self.ina_author = self.ina_data.get("user", {}).get("login", "")
+        logger.info(f"Author: {self.ina_author}")
 
     @property
     def ina_author(self) -> str:
@@ -580,43 +651,52 @@ class CommonsPage:
 
         Returns a string with the username of the iNaturalist contributor
         """
-        if self._ina_author is None:
-            if self.locked:
-                self._ina_author = ""
-            else:
-                self._ina_author = self.ina_data.get("user", {}).get("login", "")
-        return self._ina_author
+        return self._get_locking_str("_ina_author", self.get_ina_author)
 
     @ina_author.setter
     def ina_author(self, value: str) -> None:
         self._set_locking("_ina_author", value)
 
-    @property
-    def com_license(self) -> str:
+    def get_com_license(self):
         """Find the license template currently used on the Commons page
 
         Returns the first license template used on the page. If no templates
         are found, return an empty string.
         """
-        if self._com_license is None:
-            if self.locked:
-                self._com_license = ""
-            else:
-                category = pywikibot.Category(
-                    site, "Category:Primary license tags (flat list)"
-                )
 
-                for template in self.page.itertemplates():
-                    if template in category.members(namespaces=10):
-                        self._com_license = template.title(with_ns=False)
-                        break
-                else:
-                    raise ProcessingError("comlicense", "No Commons license found")
-        return self._com_license
+        category = pywikibot.Category(site, "Category:Primary license tags (flat list)")
+
+        for template in self.page.itertemplates():
+            if template in category.members(namespaces=10):
+                self._com_license = template.title(with_ns=False)
+                break
+        else:
+            raise ProcessingError("comlicense", "No Commons license found")
+        logger.info(f"Commons License: {self.com_license}")
+
+    @property
+    def com_license(self) -> str:
+        return self._get_locking_str("_com_license", self.get_com_license)
 
     @com_license.setter
     def com_license(self, value: str) -> None:
         self._set_locking("_com_license", value)
+
+    def compare_licenses(self) -> None:
+        free_licenses = set(config["free_licenses"])
+
+        if not self.ina_license:
+            # iNaturalist license wasn't found, call in the humans
+            self.status = "error"
+        elif self.ina_license not in free_licenses:
+            # Source license is non-free, failed license review
+            self.status = "fail"
+        elif self.ina_license == self.com_license:
+            # Licenses are the same, license review passes
+            self.status = "pass"
+        else:
+            # Commons license doesn't match iNaturalist, update to match
+            self.status = "pass-change"
 
     @property
     def status(self) -> str:
@@ -629,23 +709,11 @@ class CommonsPage:
             pass:       Licenses match
             pass-change: Commons license changed to free iNaturalist license
         """
-        if not self._status and not self.locked:
-            free_licenses = set(config["free_licenses"])
-
-            if not self.ina_license:
-                # iNaturalist license wasn't found, call in the humans
-                self._status = "error"
-            elif self.ina_license not in free_licenses:
-                # Source license is non-free, failed license review
-                self._status = "fail"
-            elif self.ina_license == self.com_license:
-                # Licenses are the same, license review passes
-                self._status = "pass"
-            else:
-                # Commons license doesn't match iNaturalist, update to match
-                self._status = "pass-change"
-        for hook in status_hooks:
-            hook(self)
+        if not self.locked:
+            if not self._status:
+                self.compare_licenses()
+            for hook in status_hooks:
+                hook(self)
         return self._status
 
     @status.setter
@@ -868,19 +936,13 @@ class CommonsPage:
         #####
         try:
             self.check_stop_cats()
-            raw_obs_id, raw_photo_id = self.find_ina_id()
-            logger.info(f"ID found in wikitext: {raw_obs_id} {raw_photo_id}")
-            if raw_photo_id and not raw_obs_id:
-                raw_obs_id = get_observation_from_photo(raw_photo_id)
-            assert raw_obs_id
-            self.obs_id: iNaturalistID = raw_obs_id
+            # Get iNaturalistID
+            self.find_ina_id()
+            logger.info(f"ID found in wikitext: {self.obs_id} {self.raw_photo_id}")
 
-            self.ina_throttle = utils.Throttle(10)
-            self.photo_id: iNaturalistID = self.find_photo_in_obs(raw_photo_id)
-
-            logger.info(f"iNaturalist License: {self.ina_license}")
-            logger.info(f"Author: {self.ina_author}")
-            logger.info(f"Commons License: {self.com_license}")
+            self.find_photo_in_obs()
+            self.compare_licenses()
+            self.get_ina_author()
 
         except ProcessingError as err:
             logger.info("Processing failed:", exc_info=err)

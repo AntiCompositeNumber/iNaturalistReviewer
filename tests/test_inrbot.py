@@ -181,8 +181,8 @@ def test_find_ina_id(extlinks, expected):
     page = mock.MagicMock()
     page.extlinks.return_value = extlinks
     cpage = inrbot.CommonsPage(page)
-    ina_id = cpage.find_ina_id()
-    assert ina_id == expected
+    cpage.find_ina_id()
+    assert (cpage._obs_id, cpage._raw_photo_id) == expected
 
 
 @pytest.mark.parametrize("extlinks", [["http://example.com"], []])
@@ -274,37 +274,53 @@ def test_find_photo_in_obs_pass(method):
 
     with mock.patch.dict("inrbot.config", mock_config):
         inrbot.init_compare_methods()
-        photo = cpage.find_photo_in_obs()
+        cpage.find_photo_in_obs()
     assert cpage.reason.startswith(method)
-    assert photo._replace(url="") == id_tuple(id="58596675", type="photos")
+    assert cpage.photo_id == id_tuple(id="58596675", type="photos")
 
 
 @pytest.mark.ext_web
 def test_find_photo_in_obs_ignore():
-    """When raw_photo_id is not in the obs, ignore it"""
+    """When raw_photo_id is not in the obs, compare all photos in obs"""
     cpage = inrbot.CommonsPage(None)
     mock_compare = mock.Mock(return_value=False)
     cpage.obs_id = id_tuple(id="36885889", type="observations")
-    photo_id = id_tuple(id="12345", type="photos")
+    cpage.raw_photo_id = id_tuple(id="12345", type="photos")
 
     inrbot.compare_methods = [("mock", mock_compare)]
     with pytest.raises(inrbot.ProcessingError):
-        cpage.find_photo_in_obs(raw_photo_id=photo_id)
+        cpage.find_photo_in_obs(recurse=False)
     assert mock_compare.call_count == 3
 
 
 @pytest.mark.ext_web
 def test_find_photo_in_obs_photo():
-    """When raw_photo_id is in the obs, other photos should be skipped"""
+    """When raw_photo_id is in the obs, it should be processed first
+    If it does not match, all photos in obs should be checked"""
     cpage = inrbot.CommonsPage(None)
-    mock_compare = mock.Mock(return_value=False)
     cpage.obs_id = id_tuple(id="36885889", type="observations")
     photo_id = id_tuple(id="58596679", type="photos")
+    cpage.raw_photo_id = photo_id
 
+    mock_compare = mock.Mock(return_value=False)
     inrbot.compare_methods = [("mock", mock_compare)]
     with pytest.raises(inrbot.ProcessingError):
-        cpage.find_photo_in_obs(raw_photo_id=photo_id)
-    assert mock_compare.call_count == 1
+        cpage.find_photo_in_obs(recurse=False)
+    assert mock_compare.call_count == 3
+    assert mock_compare.mock_calls[0][2]["ina_img"].id == photo_id
+
+
+@pytest.mark.ext_web
+def test_find_photo_in_obs_changeobs():
+    cpage = inrbot.CommonsPage(None)
+    cpage.obs_id = id_tuple(id="15059501", type="observations")
+    photo_id = id_tuple(id="58596679", type="photos")
+    cpage.raw_photo_id = photo_id
+
+    mock_compare = mock.Mock(side_effect=lambda com_img, ina_img: ina_img == photo_id)
+    inrbot.compare_methods = [("mock", mock_compare)]
+    cpage.find_photo_in_obs()
+    assert cpage.photo_id == photo_id
 
 
 def test_ina_license():
@@ -312,6 +328,7 @@ def test_ina_license():
     with open(test_data_dir + "/ina_response.json") as f:
         cpage._ina_data = json.load(f)
     cpage.photo_id = id_tuple(id="22483426", type="photos")
+    cpage.get_ina_license()
     assert cpage.ina_license == "Cc-by-4.0"
 
 
@@ -321,13 +338,14 @@ def test_ina_license_fail():
         cpage._ina_data = json.load(f)
     cpage.photo_id = id_tuple(id="12345", type="photos")
     with pytest.raises(inrbot.ProcessingError, match="inatlicense"):
-        cpage.ina_license
+        cpage.get_ina_license()
 
 
 def test_ina_author():
     cpage = inrbot.CommonsPage(None)
     with open(test_data_dir + "/ina_response.json") as f:
         cpage._ina_data = json.load(f)
+    cpage.get_ina_author()
     assert cpage.ina_author == "dannaguevara"
 
 
@@ -335,6 +353,7 @@ def test_com_license_found():
     site = pywikibot.Site("commons", "commons")
     page = pywikibot.FilePage(site, "File:Commons-logo-en.svg")
     cpage = inrbot.CommonsPage(page)
+    cpage.get_com_license()
     assert cpage.com_license == "Cc-by-sa-3.0"
 
 
@@ -343,7 +362,7 @@ def test_com_license_none():
     page = pywikibot.Page(site, "COM:PCP")
     cpage = inrbot.CommonsPage(page)
     with pytest.raises(inrbot.ProcessingError, match="comlicense"):
-        cpage.com_license
+        cpage.get_com_license()
 
 
 @pytest.mark.parametrize(
@@ -790,6 +809,97 @@ def test_file_is_old(conf, expected):
     with mock.patch.dict("inrbot.config", conf):
         result = cpage.is_old
     assert result is expected
+
+
+def test_review_file_checkrun():
+    cpage = inrbot.CommonsPage(mock.Mock(spec=pywikibot.FilePage))
+    mock_check = mock.MagicMock(return_value=False)
+    mock_update = mock.MagicMock()
+    with mock.patch.object(cpage, "check_can_run", mock_check):
+        with mock.patch.object(cpage, "update_review", mock_update):
+            assert cpage.review_file() is None
+    mock_check.assert_called_once()
+    mock_update.assert_not_called()
+
+
+def test_review_file_stop():
+    cpage = inrbot.CommonsPage(mock.Mock(spec=pywikibot.FilePage))
+    mock_review = mock.Mock()
+    with mock.patch.multiple(
+        cpage,
+        check_can_run=mock.Mock(return_value=True),
+        check_stop_cats=mock.Mock(side_effect=inrbot.StopReview("")),
+        update_review=mock_review,
+    ):
+        cpage.review_file()
+    assert cpage.status == "stop"
+    mock_review.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "exc,reason",
+    [(inrbot.ProcessingError("foo", ""), "foo"), (TypeError, "TypeError()")],
+)
+def test_review_file_error(exc, reason):
+    cpage = inrbot.CommonsPage(mock.Mock(spec=pywikibot.FilePage))
+    mock_review = mock.Mock()
+    with mock.patch.multiple(
+        cpage,
+        check_can_run=mock.Mock(return_value=True),
+        check_stop_cats=mock.DEFAULT,
+        update_review=mock_review,
+        find_ina_id=mock.Mock(side_effect=exc),
+    ):
+        cpage.review_file()
+    assert cpage.status == "error"
+    assert cpage.reason == reason
+    mock_review.assert_called_once()
+
+
+def test_review_file_interrupt():
+    cpage = inrbot.CommonsPage(mock.Mock(spec=pywikibot.FilePage))
+    mock_review = mock.Mock()
+    with mock.patch.multiple(
+        cpage,
+        check_can_run=mock.Mock(return_value=True),
+        check_stop_cats=mock.DEFAULT,
+        update_review=mock_review,
+        find_ina_id=mock.Mock(side_effect=KeyboardInterrupt),
+    ):
+        with pytest.raises(KeyboardInterrupt):
+            cpage.review_file()
+    mock_review.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "reviewed,status,no_del,expected",
+    [
+        (True, "fail", False, True),
+        (False, "fail", False, False),
+        (True, "error", False, False),
+        (True, "fail", True, False),
+    ],
+)
+def test_review_file_warn(reviewed, status, no_del, expected):
+    cpage = inrbot.CommonsPage(mock.Mock(spec=pywikibot.FilePage))
+    cpage.no_del = no_del
+    cpage.status = status
+    mock_review = mock.Mock(return_value=reviewed)
+    mock_warn = mock.Mock()
+    with mock.patch.multiple(
+        cpage,
+        check_can_run=mock.Mock(return_value=True),
+        update_review=mock_review,
+        fail_warning=mock_warn,
+        find_ina_id=mock.Mock(return_value=(None, None)),
+        check_stop_cats=mock.DEFAULT,
+        find_photo_in_obs=mock.DEFAULT,
+        compare_licenses=mock.DEFAULT,
+        get_ina_author=mock.DEFAULT,
+    ):
+        cpage.review_file()
+    mock_review.assert_called_once()
+    assert mock_warn.called is expected
 
 
 def test_main_auto_total():
