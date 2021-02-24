@@ -160,7 +160,7 @@ def parse_ina_url(raw_url: str) -> Optional[iNaturalistID]:
     ):
         return iNaturalistID(type=path[1], id=str(path[2]))
     elif len(path) == 4 and netloc in (
-        "inaturalist-open-data.s3.amazonaws.com/",
+        "inaturalist-open-data.s3.amazonaws.com",
         "static.inaturalist.org",
     ):
         return iNaturalistID(type=path[1], id=str(path[2]))
@@ -274,10 +274,12 @@ def get_ina_image(photo: iNaturalistID, final: bool = False) -> bytes:
     """Download original photo from iNaturalist"""
     if photo.url:
         extension = photo.url.partition("?")[0].rpartition(".")[2]
+        domain = photo.url.partition("//")[2].partition("/")[0]
     else:
         extension == "jpeg"
+        domain = "inaturalist-open-data.s3.amazonaws.com"
     # TODO: Replace this hardcoded URL
-    url = f"https://inaturalist-open-data.s3.amazonaws.com/photos/{photo.id}/original.{extension}"
+    url = f"https://{domain}/photos/{photo.id}/original.{extension}"
     response = session.get(url)
     if response.status_code == 403 and not final:
         return get_ina_image(photo._replace(url=url.replace("jpeg", "jpg")), final=True)
@@ -966,7 +968,7 @@ class CommonsPage:
         except StopReview as err:
             logger.info(f"Image already reviewed, contains {err.reason}")
             self.status = "stop"
-        except (pywikibot.exceptions.UserBlocked, KeyboardInterrupt) as err:
+        except (utils.RunpageError, KeyboardInterrupt) as err:
             raise err
         except Exception as err:
             logger.exception(err)
@@ -1013,7 +1015,7 @@ def main(
                 try:
                     check_config()
                     cpage.review_file()
-                except (pywikibot.UserBlocked, RestartBot) as err:
+                except (utils.RunpageError, RestartBot) as err:
                     # Blocks and runpage checks always stop
                     logger.exception(err)
                     raise

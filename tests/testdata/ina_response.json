@@ -10,7 +10,7 @@
     "name": "Danna Guevara",
     "name_autocomplete": "Danna Guevara",
     "orcid": null,
-    "icon": "https://static.inaturalist.org/attachments/users/icons/849523/thumb.jpg?1575389634",
+    "icon": "https://inaturalist-open-data.s3.amazonaws.com/attachments/users/icons/849523/thumb.jpg?1575389634",
     "observations_count": 132,
     "identifications_count": 1457,
     "journal_posts_count": 0,
@@ -18,14 +18,14 @@
     "universal_search_rank": 132,
     "roles": [],
     "site_id": 6,
-    "icon_url": "https://static.inaturalist.org/attachments/users/icons/849523/medium.jpg?1575389634",
+    "icon_url": "https://inaturalist-open-data.s3.amazonaws.com/attachments/users/icons/849523/medium.jpg?1575389634",
     "preferences": {}
   },
   "photos": [
     {
       "id": 22483122,
       "license_code": "cc-by",
-      "url": "https://static.inaturalist.org/photos/22483122/square.jpeg?1533252564",
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/22483122/square.jpeg?1533252564",
       "attribution": "(c) Danna Guevara, some rights reserved (CC BY)",
       "original_dimensions": {
         "width": 2048,
@@ -36,7 +36,7 @@
     {
       "id": 22483426,
       "license_code": "cc-by",
-      "url": "https://static.inaturalist.org/photos/22483426/square.jpeg?1533252990",
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/22483426/square.jpeg?1533252990",
       "attribution": "(c) Danna Guevara, some rights reserved (CC BY)",
       "original_dimensions": {
         "width": 2048,
@@ -47,7 +47,7 @@
     {
       "id": 22483457,
       "license_code": "cc-by",
-      "url": "https://static.inaturalist.org/photos/22483457/square.jpeg?1533253055",
+      "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/22483457/square.jpeg?1533253055",
       "attribution": "(c) Danna Guevara, some rights reserved (CC BY)",
       "original_dimensions": {
         "width": 2048,

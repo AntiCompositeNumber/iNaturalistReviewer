@@ -109,7 +109,7 @@ def test_check_runpage_stop(text):
     page = mock.MagicMock()
     page.return_value.text = text
 
-    with pytest.raises(pywikibot.UserBlocked):
+    with pytest.raises(utils.RunpageError):
         with mock.patch("pywikibot.Page", page):
             utils.check_runpage(inrbot.site)
 
@@ -1074,7 +1074,7 @@ def test_main_auto_blocked():
     # Runpage fails and actually being blocked should stop the bot.
     mock_cpage = mock.MagicMock()
     review_file = mock.MagicMock()
-    review_file.side_effect = pywikibot.UserBlocked("Runpage is false!")
+    review_file.side_effect = utils.RunpageError("Runpage is false!")
     mock_cpage.return_value.review_file = review_file
     sleep = mock.MagicMock()
     files_to_check = mock.MagicMock(return_value=range(0, 10))
@@ -1083,7 +1083,7 @@ def test_main_auto_blocked():
         with mock.patch("time.sleep", sleep):
             with mock.patch("inrbot.files_to_check", files_to_check):
                 with mock.patch("pywikibot.FilePage", lambda arg: arg):
-                    with pytest.raises(pywikibot.UserBlocked):
+                    with pytest.raises(utils.RunpageError):
                         inrbot.main(total=1)
 
     sleep.assert_not_called()

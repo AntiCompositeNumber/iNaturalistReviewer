@@ -27,6 +27,11 @@ from typing import Callable, Any, Dict
 logger = logging.getLogger(__name__)
 
 
+class RunpageError(Exception):
+    """Called when the bot can not continue because it is disabled"""
+    pass
+
+
 def logger_config(module: str, level: str = "INFO", filename: str = "") -> Dict:
     loglevel = os.environ.get("LOG_LEVEL", level)
     if loglevel == "VERBOSE":
@@ -132,10 +137,10 @@ def on_toolforge() -> bool:
 
 
 def check_runpage(site: pywikibot.Site, override: bool = False) -> None:
-    """Raises pywikibot.UserBlocked if on-wiki runpage is not True"""
+    """Raises RunpageError if on-wiki runpage is not True"""
     page = pywikibot.Page(site, "User:INaturalistReviewBot/Run")
     if not page.text.endswith("True") and not override:
-        raise pywikibot.UserBlocked("Runpage is false, quitting")
+        raise RunpageError("Runpage is false, quitting")
 
 
 def save_page(
