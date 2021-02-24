@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 class RunpageError(Exception):
     """Called when the bot can not continue because it is disabled"""
+
     pass
 
 
