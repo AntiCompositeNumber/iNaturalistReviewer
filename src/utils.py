@@ -168,7 +168,10 @@ def save_page(
     else:
         page.text = text
         page.save(
-            summary=summary, minor=minor, botflag=bot, quiet=True,
+            summary=summary,
+            minor=minor,
+            botflag=bot,
+            quiet=True,
         )
         logger.info(f"Page {page.title(as_link=True)} saved")
 
