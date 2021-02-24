@@ -202,7 +202,7 @@ def test_files_to_check():
                 "https://inaturalist-open-data.s3.amazonaws.com/photos/12345/original.jpeg?12345",
             ],
             (None, id_tuple(id="12345", type="photos")),
-        )
+        ),
     ],
 )
 def test_find_ina_id(extlinks, expected):
