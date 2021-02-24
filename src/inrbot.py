@@ -881,9 +881,7 @@ class CommonsPage:
         )
         for hook in pre_save_hooks:
             hook(
-                self,
-                new_text=new_text,
-                summary=summary,
+                self, new_text=new_text, summary=summary,
             )
         if not simulate:
             utils.check_runpage(site, run_override)
@@ -1067,10 +1065,7 @@ if __name__ == "__main__":
         help="skip the runpage check for testing",
     )
     parser.add_argument(
-        "--start",
-        action="store",
-        help="sortkey to start iterating at",
-        default=None,
+        "--start", action="store", help="sortkey to start iterating at", default=None,
     )
     sim = parser.add_mutually_exclusive_group()
     sim.add_argument(

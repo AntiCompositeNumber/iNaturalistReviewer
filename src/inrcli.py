@@ -192,6 +192,12 @@ def main(target, url="", simulate=False, reverse=False):
         for page in cat.articles(namespaces=6, reverse=reverse):
             ManualCommonsPage(pywikibot.FilePage(page)).review_file()
             click.confirm("Continue", abort=True, default=True)
+    elif target == "ask":
+        while True:
+            new_target = click.prompt("Target", default="")
+            if not new_target:
+                break
+            ManualCommonsPage(pywikibot.FilePage(site, new_target)).review_file()
     else:
         page = pywikibot.FilePage(site, target)
         if url:
