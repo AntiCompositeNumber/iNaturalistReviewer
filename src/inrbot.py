@@ -43,7 +43,7 @@ from typing import Any
 
 import utils
 
-__version__ = "2.0.4"
+__version__ = "2.0.5"
 
 logging.config.dictConfig(
     utils.logger_config("inrbot", level="VERBOSE", filename="inrbot.log")
@@ -159,7 +159,7 @@ def parse_ina_url(raw_url: str) -> Optional[iNaturalistID]:
         )
     ):
         return iNaturalistID(type=path[1], id=str(path[2]))
-    elif len(path) == 4 and netloc == "static.inaturalist.org":
+    elif len(path) == 4 and netloc in ("inaturalist-open-data.s3.amazonaws.com/", "static.inaturalist.org"):
         return iNaturalistID(type=path[1], id=str(path[2]))
     else:
         return None
@@ -273,7 +273,8 @@ def get_ina_image(photo: iNaturalistID, final: bool = False) -> bytes:
         extension = photo.url.partition("?")[0].rpartition(".")[2]
     else:
         extension == "jpeg"
-    url = f"https://static.inaturalist.org/photos/{photo.id}/original.{extension}"
+    # TODO: Replace this hardcoded URL
+    url = f"https://inaturalist-open-data.s3.amazonaws.com/photos/{photo.id}/original.{extension}"
     response = session.get(url)
     if response.status_code == 403 and not final:
         return get_ina_image(photo._replace(url=url.replace("jpeg", "jpg")), final=True)
@@ -466,16 +467,16 @@ class CommonsPage:
                 or url_id in photos
                 or url_id in observations
             ):
-                continue
+                continue  # pragma: no cover
             elif url_id.type == "observations":
                 observations.append(url_id)
             elif url_id.type == "photos":
                 photos.append(url_id)
 
         for hook in id_hooks:
-            hook_id = hook(self, observations=observations, photos=photos)
+            hook_id = hook(self, observations=observations.copy(), photos=photos.copy())
             if hook_id is None or re.search(r"[A-z]", hook_id.id):
-                continue
+                continue  # pragma: no cover
             elif hook_id.type == "observations":
                 observations.insert(0, hook_id)
             elif hook_id.type == "photos":
@@ -722,7 +723,7 @@ class CommonsPage:
 
     @status.deleter
     def status(self):
-        self._status = ""
+        self.status = ""
 
     def _file_is_old(self) -> bool:
         if not config.get("old_fail", False):

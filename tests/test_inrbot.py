@@ -139,6 +139,7 @@ def test_files_to_check():
         (
             [
                 "https://www.inaturalist.org/photos/12345",
+                "https://www.inaturalist.org/taxon/123-foobar",
                 "https://www.inaturalist.org/observations/15059501",
             ],
             (
@@ -173,6 +174,7 @@ def test_files_to_check():
         (
             [
                 "https://www.inaturalist.org/photos/12345",
+                "https://www.inaturalist.org/photos/12345",
                 "https://www.inaturalist.org/observations/example",
             ],
             (None, id_tuple(id="12345", type="photos")),
@@ -194,6 +196,13 @@ def test_files_to_check():
             ],
             (None, id_tuple(id="12345", type="photos")),
         ),
+        (
+            [
+                "http://example.com",
+                "https://inaturalist-open-data.s3.amazonaws.com/photos/12345/original.jpeg?12345",
+            ],
+            (None, id_tuple(id="12345", type="photos")),
+        )
     ],
 )
 def test_find_ina_id(extlinks, expected):
@@ -211,6 +220,23 @@ def test_find_ina_id_fail(extlinks):
     cpage = inrbot.CommonsPage(page)
     with pytest.raises(inrbot.ProcessingError, match="nourl"):
         cpage.find_ina_id()
+
+
+def test_find_ina_id_hook():
+    page = mock.MagicMock()
+    page.extlinks.return_value = ["https://www.inaturalist.org/photos/54321"]
+    ext_photo = id_tuple(id="54321", type="photos")
+    photo_id = id_tuple(id="12345", type="photos")
+    obs_id = id_tuple(id="67890", type="observations")
+    hook_1 = mock.MagicMock(return_value=photo_id)
+    hook_2 = mock.MagicMock(return_value=obs_id)
+    with mock.patch("inrbot.id_hooks", [hook_1, hook_2]):
+        cpage = inrbot.CommonsPage(page)
+        cpage.find_ina_id()
+    assert cpage.raw_photo_id == photo_id
+    assert cpage.obs_id == obs_id
+    hook_1.assert_called_once_with(cpage, observations=[], photos=[ext_photo])
+    hook_2.assert_called_once_with(cpage, observations=[], photos=[photo_id, ext_photo])
 
 
 @pytest.mark.ext_web
@@ -393,11 +419,99 @@ def test_com_license_none():
         ("", "", "error"),
     ],
 )
-def test_status(ina_license, com_license, expected):
+def test_compare_licenses(ina_license, com_license, expected):
     cpage = inrbot.CommonsPage(None)
     cpage.ina_license = ina_license
     cpage.com_license = com_license
+    cpage.compare_licenses()
     assert cpage.status == expected
+
+
+def test_status_hooks():
+    def side_effect(self):
+        self.status = "foo"
+
+    hook = mock.MagicMock(side_effect=side_effect)
+    cpage = inrbot.CommonsPage(None)
+    with mock.patch("inrbot.status_hooks", [hook]):
+        with mock.patch.object(cpage, "compare_licenses"):
+            assert cpage.status == "foo"
+    hook.assert_called_once_with(cpage)
+
+
+def test_status_lock():
+    hook = mock.MagicMock()
+    compare = mock.MagicMock()
+    cpage = inrbot.CommonsPage(None)
+    with mock.patch("inrbot.status_hooks", [hook]):
+        with mock.patch.object(cpage, "compare_licenses", compare):
+            assert cpage.status == ""
+            compare.assert_called_once()
+            hook.assert_called_once()
+
+            cpage.status = "foo"
+            assert cpage.status == "foo"
+            compare.assert_called_once()
+            assert hook.call_count == 2
+
+            cpage.lock()
+            assert cpage.status == "foo"
+            compare.assert_called_once()
+            assert hook.call_count == 2
+            with pytest.raises(TypeError):
+                cpage.status = "bar"
+            with pytest.raises(TypeError):
+                del cpage.status
+
+
+def test_status_del():
+    cpage = inrbot.CommonsPage(None)
+    cpage.status = "foo"
+    del cpage.status
+    with mock.patch.object(cpage, "compare_licenses"):
+        assert cpage.status == ""
+
+
+@pytest.mark.parametrize(
+    "status,timestamp,expected",
+    [
+        ("fail", inrbot.site.server_time(), False),
+        ("fail", pywikibot.Timestamp.fromISOformat("2019-01-01T00:00:00Z"), True),
+        ("pass", pywikibot.Timestamp.fromISOformat("2019-01-01T00:00:00Z"), False),
+    ],
+)
+def test_is_old(status, timestamp, expected):
+    mock_page = mock.Mock(spec=pywikibot.FilePage)
+    mock_page.latest_file_info.timestamp = timestamp
+    cpage = inrbot.CommonsPage(mock_page)
+    cpage.status = status
+    assert cpage.is_old == expected
+
+
+@pytest.mark.parametrize(
+    "status,templates,expected",
+    [
+        ("fail", [pywikibot.Page(inrbot.site, "Template:OTRS received")], True),
+        ("fail", [pywikibot.Page(inrbot.site, "Template:Deletion template tag")], True),
+        ("fail", [], False),
+        (
+            "fail",
+            [
+                pywikibot.Page(inrbot.site, "Template:License template tag"),
+                pywikibot.Page(inrbot.site, "Template:OTRS received"),
+            ],
+            True,
+        ),
+        ("fail", [pywikibot.Page(inrbot.site, "Template:License template tag")], False),
+        ("pass", [pywikibot.Page(inrbot.site, "Template:OTRS received")], False),
+    ],
+)
+def test_no_del(status, templates, expected):
+    mock_page = mock.MagicMock(spec=pywikibot.FilePage)
+    mock_page.itertemplates.return_value = templates
+    cpage = inrbot.CommonsPage(mock_page)
+    cpage.status = status
+    assert cpage.no_del == expected
 
 
 @pytest.mark.parametrize(
@@ -688,52 +802,53 @@ def test_update_review_broken():
     assert cpage.update_review() is False
 
 
-def test_make_template():
+@pytest.mark.parametrize(
+    "kwargs,compare",
+    [
+        (
+            dict(
+                status="pass",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="Cc-by-sa-4.0",
+                reason="sha1",
+            ),
+            (
+                "{{iNaturalistReview |status=pass |author=Author "
+                "|sourceurl=https://www.inaturalist.org/photos/11505950 "
+                "|archive=archive(https://www.inaturalist.org/photos/11505950) "
+                f"|reviewdate={date.today().isoformat()} "
+                "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0 "
+                "|reason=sha1}}"
+            ),
+        ),
+        (
+            dict(
+                status="pass-change",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="Cc-by-4.0",
+                reason="sha1",
+            ),
+            (
+                "{{iNaturalistReview |status=pass-change |author=Author "
+                "|sourceurl=https://www.inaturalist.org/photos/11505950 "
+                "|archive=archive(https://www.inaturalist.org/photos/11505950) "
+                f"|reviewdate={date.today().isoformat()} "
+                "|reviewer=iNaturalistReviewBot "
+                "|reviewlicense=Cc-by-sa-4.0 |uploadlicense=Cc-by-4.0 |reason=sha1}}"
+            ),
+        ),
+        (dict(status="stop"), ""),
+    ],
+)
+def test_make_template(kwargs, compare):
     cpage = inrbot.CommonsPage(None)
     photo_id = id_tuple(type="photos", id="11505950")
-    kwargs = dict(
-        photo_id=photo_id,
-        status="pass",
-        ina_author="Author",
-        ina_license="Cc-by-sa-4.0",
-        com_license="Cc-by-sa-4.0",
-        reason="sha1",
-        archive=f"archive({photo_id})",
-    )
+    kwargs.setdefault("photo_id", photo_id)
+    kwargs.setdefault("archive", f"archive({photo_id})")
     for key, value in kwargs.items():
         setattr(cpage, key, value)
-    compare = (
-        "{{iNaturalistReview |status=pass |author=Author "
-        "|sourceurl=https://www.inaturalist.org/photos/11505950 "
-        "|archive=archive(https://www.inaturalist.org/photos/11505950) "
-        f"|reviewdate={date.today().isoformat()} "
-        "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
-    )
-    assert cpage.make_template() == compare
-
-
-def test_make_template_change():
-    cpage = inrbot.CommonsPage(None)
-    photo_id = id_tuple(type="photos", id="11505950")
-    kwargs = dict(
-        photo_id=photo_id,
-        status="pass-change",
-        ina_author="Author",
-        ina_license="Cc-by-sa-4.0",
-        com_license="Cc-by-4.0",
-        reason="sha1",
-        archive=f"archive({photo_id})",
-    )
-    for key, value in kwargs.items():
-        setattr(cpage, key, value)
-    compare = (
-        "{{iNaturalistReview |status=pass-change |author=Author "
-        "|sourceurl=https://www.inaturalist.org/photos/11505950 "
-        "|archive=archive(https://www.inaturalist.org/photos/11505950) "
-        f"|reviewdate={date.today().isoformat()} "
-        "|reviewer=iNaturalistReviewBot "
-        "|reviewlicense=Cc-by-sa-4.0 |uploadlicense=Cc-by-4.0 |reason=sha1}}"
-    )
     assert cpage.make_template() == compare
 
 
