@@ -406,6 +406,14 @@ def test_com_license_none():
     site = pywikibot.Site("commons", "commons")
     page = pywikibot.Page(site, "COM:PCP")
     cpage = inrbot.CommonsPage(page)
+    cpage.get_com_license()
+    assert cpage.com_license == ""
+
+
+def test_com_license_unk():
+    site = pywikibot.Site("commons", "commons")
+    page = pywikibot.Page(site, "Template:CC-Layout")
+    cpage = inrbot.CommonsPage(page)
     with pytest.raises(inrbot.ProcessingError, match="comlicense"):
         cpage.get_com_license()
 
@@ -415,6 +423,7 @@ def test_com_license_none():
     [
         ("Cc-by-4.0", "Cc-by-4.0", "pass"),
         ("Cc-by-sa-4.0", "Cc-by-4.0", "pass-change"),
+        ("Cc-by-4.0", "", "pass-change"),
         ("Cc-by-nd-4.0", "Cc-by-4.0", "fail"),
         ("", "", "error"),
     ],
@@ -612,6 +621,24 @@ def test_no_del(status, templates, expected):
             ),
         ),
         (
+            test_data_dir + "/section_nolic.txt",
+            dict(
+                status="pass-change",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="",
+                reason="sha1",
+            ),
+            (
+                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass-change "
+                "|author=Author |sourceurl=https://www.inaturalist.org/photos/11505950 "
+                "|archive=archive(https://www.inaturalist.org/photos/11505950) "
+                f"|reviewdate={date.today().isoformat()} "
+                "|reviewer=iNaturalistReviewBot "
+                "|reviewlicense=Cc-by-sa-4.0 |uploadlicense= |reason=sha1}}"
+            ),
+        ),
+        (
             test_data_dir + "/para.txt",
             dict(
                 status="pass",
@@ -645,6 +672,25 @@ def test_no_del(status, templates, expected):
                 f"|reviewdate={date.today().isoformat()} "
                 "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0 "
                 "|uploadlicense=Cc-by-4.0 |reason=sha1}}"
+            ),
+        ),
+        (
+            test_data_dir + "/para_nolic.txt",
+            dict(
+                status="pass-change",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="",
+                reason="sha1",
+            ),
+            (
+                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass-change "
+                "|author=Author "
+                "|sourceurl=https://www.inaturalist.org/photos/11505950 "
+                "|archive=archive(https://www.inaturalist.org/photos/11505950) "
+                f"|reviewdate={date.today().isoformat()} "
+                "|reviewer=iNaturalistReviewBot |reviewlicense=Cc-by-sa-4.0 "
+                "|uploadlicense= |reason=sha1}}"
             ),
         ),
         (

@@ -43,7 +43,7 @@ from typing import Any
 
 import utils
 
-__version__ = "2.0.5"
+__version__ = "2.1.0"
 
 logging.config.dictConfig(
     utils.logger_config("inrbot", level="VERBOSE", filename="inrbot.log")
@@ -671,13 +671,21 @@ class CommonsPage:
         """
 
         category = pywikibot.Category(site, "Category:Primary license tags (flat list)")
+        templates = set(self.page.itertemplates())
+        license_tags = set(category.members(namespaces=10))
 
-        for template in self.page.itertemplates():
-            if template in category.members(namespaces=10):
-                self._com_license = template.title(with_ns=False)
-                break
+        if pywikibot.Page(site, "Template:License template tag") in templates:
+            for template in templates:
+                if template in license_tags:
+                    self._com_license = template.title(with_ns=False)
+                    break
+            else:
+                raise ProcessingError(
+                    "comlicense", "Could not determine Commons license"
+                )
         else:
-            raise ProcessingError("comlicense", "No Commons license found")
+            logger.info("No Commons license found!")
+            self._com_license = ""
         logger.info(f"Commons License: {self.com_license}")
 
     @property
@@ -828,9 +836,13 @@ class CommonsPage:
             return False
 
         if self.status == "pass-change":
-            aliases = Aliases(self.com_license)
-            for pt2 in code.ifilter_templates(matches=aliases.is_license):
-                code.replace(pt2, ("{{%s}}" % self.ina_license))
+            if self.com_license:
+                aliases = Aliases(self.com_license)
+                for pt2 in code.ifilter_templates(matches=aliases.is_license):
+                    code.replace(pt2, ("{{%s}}" % self.ina_license))
+            else:
+                code.insert_before(template, ("{{%s}}" % self.ina_license))
+
         if self.status == "fail" and not self.no_del:
             code.insert(
                 0,

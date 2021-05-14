@@ -130,3 +130,7 @@ dmypy.json
 
 # Config
 github_config.json
+apicache-py3/
+pywikibot.lwp
+throttle.ctrl
+
