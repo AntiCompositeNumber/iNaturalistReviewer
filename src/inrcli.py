@@ -46,7 +46,7 @@ inrbot.config.update(
         "$status $review_license (inrcli $version)",
         "old_fail_warn": "\n\n{{subst:image permission|1=$filename}} "
         "License review not passed: iNaturalist author is using $review_license. ~~~~",
-        "use_wayback": True,
+        "use_wayback": False,
     }
 )
 
@@ -99,18 +99,17 @@ class ManualCommonsPage(inrbot.CommonsPage):
 
     def archive_status_hook(self) -> None:
         if self._status == "fail":
-            archive = self.get_old_archive_()
-            if archive:
+            super().get_old_archive()
+            if self.archive:
                 print(
                     f"This file would fail because of the {self.ina_license} license, "
-                    f"but an archived copy is available at {archive}."
+                    f"but an archived copy is available at {self.archive}."
                 )
                 new_license = click.prompt(
-                    "Archive license (leave blank for no change)"
+                    "Archive license (leave blank for no change)", default=self.ina_license
                 )
                 if new_license:
-                    self._ina_license = new_license
-                    self.archive = archive
+                    self.ina_license = new_license
                     del self.status
                     self.status
 
@@ -174,7 +173,7 @@ class ManualCommonsPage(inrbot.CommonsPage):
 
 
 inrbot.id_hooks.append(ManualCommonsPage.id_hook)
-inrbot.status_hooks.append(ManualCommonsPage.archive_status_hook)
+inrbot.lock_hooks.append(ManualCommonsPage.archive_status_hook)
 inrbot.pre_save_hooks.append(ManualCommonsPage.pre_save)
 
 

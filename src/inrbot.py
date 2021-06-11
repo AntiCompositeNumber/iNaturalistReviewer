@@ -45,6 +45,7 @@ import utils
 
 __version__ = "2.1.0"
 
+pywikibot.bot.init_handlers()
 logging.config.dictConfig(
     utils.logger_config("inrbot", level="VERBOSE", filename="inrbot.log")
 )
@@ -72,6 +73,7 @@ compare_methods: List[Tuple[str, Callable]] = []
 pre_save_hooks: List[Callable] = []
 id_hooks: List[Callable] = []
 status_hooks: List[Callable] = []
+lock_hooks: List[Callable] = []
 
 
 class iNaturalistID(NamedTuple):
@@ -419,6 +421,8 @@ class CommonsPage:
 
     def lock(self):
         if self.locked is False:
+            for hook in lock_hooks:
+                hook(self)
             self.locked = True
 
     def _set_locking(self, attr: str, value: Any) -> None:
@@ -808,7 +812,8 @@ class CommonsPage:
 
     def get_old_archive(self) -> None:
         try:
-            self.archive = waybackpy.Url(str(self.photo_id), user_agent).oldest()
+            url = waybackpy.Url(str(self.photo_id), user_agent).oldest()
+            self.archive = url.archive_url
         except Exception as err:
             logger.info("Failed to get archive", exc_info=err)
             self.archive = ""
