@@ -10,6 +10,7 @@ coveralls = "*"
 pipenv-to-requirements = "*"
 mypy = "*"
 black = "*"
+types-requests = "*"
 
 [packages]
 requests = "*"
