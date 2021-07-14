@@ -188,7 +188,10 @@ def main(target, url="", simulate=False, reverse=False):
         cat = pywikibot.Category(
             site, "Category:iNaturalist images needing human review"
         )
+        dtt = pywikibot.Page(site, "Template:Deletion template tag")
         for page in cat.articles(namespaces=6, reverse=reverse):
+            if dtt in set(page.itertemplates()):
+                continue
             ManualCommonsPage(pywikibot.FilePage(page)).review_file()
             click.confirm("Continue", abort=True, default=True)
     elif target == "ask":

@@ -43,7 +43,7 @@ from typing import Any
 
 import utils
 
-__version__ = "2.1.0"
+__version__ = "2.1.1"
 
 pywikibot.bot.init_handlers()
 logging.config.dictConfig(
