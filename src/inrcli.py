@@ -106,7 +106,8 @@ class ManualCommonsPage(inrbot.CommonsPage):
                     f"but an archived copy is available at {self.archive}."
                 )
                 new_license = click.prompt(
-                    "Archive license (leave blank for no change)", default=self.ina_license
+                    "Archive license (leave blank for no change)",
+                    default=self.ina_license,
                 )
                 if new_license:
                     self.ina_license = new_license
