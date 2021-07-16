@@ -35,11 +35,30 @@ To start the bot in automatic mode:
 To get the pod status:
 `kubectl get pods`
 
-To update the bot:
+### Updating the bot
+With only code changes:
+```console
+$ git -C /data/project/inaturalistreviewer/iNaturalistReviewer pull
+$ kubectl get pods
+$ kubectl delete pod <pod id>
 ```
-kubectl delete deployment inaturalistreviewer.bot
-git -C /data/project/inaturalistreviewer/iNaturalistReviewer pull
-kubectl create -f /data/project/inaturalistreviewer/iNaturalistReviewer/deployment.yaml
+
+With code changes and/or dependency updates:
+```console
+$ webservice shell
+$ source venv/bin/activate
+$ cd iNaturalistReviewer
+$ git pull
+$ pip install --upgrade pip && pip install -r requirements.txt
+$ exit
+$ kubectl get pods
+$ kubectl delete pod <pod id>
+```
+
+```console
+$ kubectl delete deployment inaturalistreviewer.bot
+$ git -C /data/project/inaturalistreviewer/iNaturalistReviewer pull
+$ kubectl create -f /data/project/inaturalistreviewer/iNaturalistReviewer/deployment.yaml
 ```
 
 TODO: Stick these commands in a bash script
