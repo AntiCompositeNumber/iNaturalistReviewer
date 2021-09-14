@@ -88,8 +88,8 @@ def logger_config(module: str, level: str = "INFO", filename: str = "") -> Dict:
         conf["handlers"]["smtp"] = {
             "class": "logging.handlers.SMTPHandler",
             "mailhost": "mail.tools.wmflabs.org",
-            "fromaddr": "tools.inaturalistreviewer@tools.wmflabs.org",
-            "toaddrs": ["tools.inaturalistreviewer@tools.wmflabs.org"],
+            "fromaddr": "tools.inaturalistreviewer@toolforge.org",
+            "toaddrs": ["tools.inaturalistreviewer@toolforge.org"],
             "subject": f"iNaturalistReviewBot {module} error",
             "level": "ERROR",
             "formatter": "log",
