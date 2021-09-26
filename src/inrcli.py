@@ -31,6 +31,7 @@ os.environ["LOG_LEVEL"] = "WARNING"
 
 import inrbot  # noqa: E402
 
+inrbot.run_override = True
 site = inrbot.site
 logger = logging.getLogger("manual")
 ids: Dict[pywikibot.Page, Optional[inrbot.iNaturalistID]] = {}

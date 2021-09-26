@@ -16,6 +16,7 @@ Pillow = "*"
 waybackpy = "^2.4.4"
 ImageHash = "*"
 click = "*"
+acnutils = {path = "../acnutils"}
 
 [tool.poetry.dev-dependencies]
 flake8 = "*"
