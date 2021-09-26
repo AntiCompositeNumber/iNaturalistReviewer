@@ -3,7 +3,7 @@
 ![Uptime Robot status](https://img.shields.io/uptimerobot/status/m784049619-0b897b81ddd538c8962c1172?label=runpage)
 ![GitHub issues by-label](https://img.shields.io/github/issues/AntiCompositeNumber/iNaturalistReviewer/prod-error)
 [![Coverage Status](https://coveralls.io/repos/github/AntiCompositeNumber/iNaturalistReviewer/badge.svg?branch=master)](https://coveralls.io/github/AntiCompositeNumber/iNaturalistReviewer?branch=master)
-![GitHub Pipenv locked Python version](https://img.shields.io/github/pipenv/locked/python-version/AntiCompositeNumber/iNaturalistReviewer)
+![Python version 3.7](https://img.shields.io/badge/python-v3.7-blue)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 Automatic iNaturalist reviewer for Commons.
