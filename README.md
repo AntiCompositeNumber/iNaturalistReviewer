@@ -24,7 +24,7 @@ Optional args:
 
 ## Deployment
 This bot runs on Toolforge as `inaturalistreviewer` with the `python3.7` Kubernetes container.
-The k8s configuration is stored in `deployment.yaml` and `job.yaml` and assumes that there is a python 3.7 virtualenv in `/data/project/inaturalistreviewer/venv/`.
+The k8s configuration is stored in `deployment.yaml` and `job.yaml` and assumes that there is a python 3.7 virtualenv in `/data/project/inaturalistreviewer/iNaturalistReviewer/venv/`.
 
 To stop the bot:
 `kubectl delete deployment inaturalistreviewer.bot`
@@ -46,10 +46,9 @@ $ kubectl delete pod <pod id>
 With code changes and/or dependency updates:
 ```console
 $ webservice shell
-$ source venv/bin/activate
 $ cd iNaturalistReviewer
 $ git pull
-$ pip install --upgrade pip && pip install -r requirements.txt
+$ ./upgrade.sh
 $ exit
 $ kubectl get pods
 $ kubectl delete pod <pod id>
@@ -64,7 +63,7 @@ $ kubectl create -f /data/project/inaturalistreviewer/iNaturalistReviewer/deploy
 TODO: Stick these commands in a bash script
 
 ## Commons intergration
-The bot is controlled by a [runpage on Commons](https://commons.wikimedia.org/wiki/User:INaturalistReviewBot/Run). If the runpage does not end with True, the bot will stop cleanly. Blocking the bot will also stop it from running. Using the runpage is preferred as it is faster and easier for everyone involved. 
+The bot is controlled by a [runpage on Commons](https://commons.wikimedia.org/wiki/User:INaturalistReviewBot/Run). If the runpage does not end with True, the bot will stop cleanly. Blocking the bot will also stop it from running. Using the runpage is preferred as it is faster and easier for everyone involved.
 
 The bot looks for images in [Category:iNaturalist review needed](https://commons.wikimedia.org/wiki/Category:INaturalist_review_needed) that transclude {{[iNaturalistreview](https://commons.wikimedia.org/wiki/Template:INaturalistreview)}}.
 
