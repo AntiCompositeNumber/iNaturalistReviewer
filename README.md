@@ -3,7 +3,7 @@
 ![Uptime Robot status](https://img.shields.io/uptimerobot/status/m784049619-0b897b81ddd538c8962c1172?label=runpage)
 ![GitHub issues by-label](https://img.shields.io/github/issues/AntiCompositeNumber/iNaturalistReviewer/prod-error)
 [![Coverage Status](https://coveralls.io/repos/github/AntiCompositeNumber/iNaturalistReviewer/badge.svg?branch=master)](https://coveralls.io/github/AntiCompositeNumber/iNaturalistReviewer?branch=master)
-![Python version 3.7](https://img.shields.io/badge/python-v3.7-blue)
+![Python version 3.9](https://img.shields.io/badge/python-v3.9-blue)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 Automatic iNaturalist reviewer for Commons.
@@ -23,8 +23,8 @@ Optional args:
 `--version` Prints version information
 
 ## Deployment
-This bot runs on Toolforge as `inaturalistreviewer` with the `python3.7` Kubernetes container.
-The k8s configuration is stored in `deployment.yaml` and `job.yaml` and assumes that there is a python 3.7 virtualenv in `/data/project/inaturalistreviewer/iNaturalistReviewer/venv/`.
+This bot runs on Toolforge as `inaturalistreviewer` with the `python3.9` Kubernetes container.
+The k8s configuration is stored in `deployment.yaml` and `job.yaml` and assumes that there is a python 3.9 virtualenv in `/data/project/inaturalistreviewer/iNaturalistReviewer/venv/`.
 
 To stop the bot:
 `kubectl delete deployment inaturalistreviewer.bot`
