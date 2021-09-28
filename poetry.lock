@@ -1,4 +1,18 @@
 [[package]]
+name = "acnutils"
+version = "0.4.0"
+description = "Various utilities used in AntiCompositeNumber's bots"
+category = "main"
+optional = false
+python-versions = ">=3.7,<4.0"
+
+[package.dependencies]
+pywikibot = ">=6.6.1,<7.0.0"
+
+[package.extras]
+db = ["toolforge (>=5.0.0,<6.0.0)"]
+
+[[package]]
 name = "atomicwrites"
 version = "1.4.0"
 description = "Atomic file writes."
@@ -487,9 +501,13 @@ requests = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.9"
-content-hash = "81661b5e4b9e3912206ec6f20ade1456574122672b59cf1ad53d03d859e1a64a"
+content-hash = "e578ec260767d836902281223785521906f9c5b3500ad171c0bb4b00a0869d47"
 
 [metadata.files]
+acnutils = [
+    {file = "acnutils-0.4.0-py3-none-any.whl", hash = "sha256:6c4fe04ed02757ea0242fbea49915db2b55b4f2fd96b12e42d925721fe2fc41f"},
+    {file = "acnutils-0.4.0.tar.gz", hash = "sha256:391e6b21e25896c2b709699b68304ff22dfb386570e1d8aeb3f377b630197c76"},
+]
 atomicwrites = [
     {file = "atomicwrites-1.4.0-py2.py3-none-any.whl", hash = "sha256:6d1784dea7c0c8d4a5172b6c620f40b6e4cbfdf96d783691f2e1302a7b88e197"},
     {file = "atomicwrites-1.4.0.tar.gz", hash = "sha256:ae70396ad1a434f9c7046fd2dd196fc04b12f9e91ffb859164193be8b6168a7a"},

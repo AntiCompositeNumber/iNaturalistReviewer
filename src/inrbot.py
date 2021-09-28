@@ -41,15 +41,11 @@ import waybackpy  # type: ignore
 from typing import NamedTuple, Optional, Set, Tuple, Dict, Union, cast, Callable, List
 from typing import Any
 
-import utils
+import acnutils
 
-__version__ = "2.1.1"
+__version__ = "2.2.0"
 
-pywikibot.bot.init_handlers()
-logging.config.dictConfig(
-    utils.logger_config("inrbot", level="VERBOSE", filename="inrbot.log")
-)
-logger = logging.getLogger("inrbot")
+logger = acnutils.getInitLogger("inrbot", level="VERBOSE", filename="inrbot.log")
 
 site = pywikibot.Site("commons", "commons")
 site.login()
@@ -216,7 +212,7 @@ class iNaturalistImage(Image):
     @property
     def raw(self) -> bytes:
         if not self._raw:
-            self._raw = utils.retry(get_ina_image, 3, photo=self.id)
+            self._raw = acnutils.retry(get_ina_image, 3, photo=self.id)
         return cast(bytes, self._raw)
 
     @property
@@ -387,8 +383,8 @@ class CommonsPage:
     def __init__(
         self,
         page: pywikibot.FilePage,
-        throttle: Optional[utils.Throttle] = None,
-        ina_throttle: utils.Throttle = utils.Throttle(10),
+        throttle: Optional[acnutils.Throttle] = None,
+        ina_throttle: acnutils.Throttle = acnutils.Throttle(10),
     ) -> None:
         self.page = page
         self._com_license: Optional[str] = None
@@ -905,10 +901,10 @@ class CommonsPage:
                 summary=summary,
             )
         if not simulate:
-            utils.check_runpage(site, run_override)
+            acnutils.check_runpage(site, override=run_override)
             logger.info(f"Saving {self.page.title()}")
-            utils.retry(
-                utils.save_page,
+            acnutils.retry(
+                acnutils.save_page,
                 3,
                 text=new_text,
                 page=self.page,
@@ -934,10 +930,10 @@ class CommonsPage:
             status="fail", review_license=self.ina_license, version=__version__
         )
         if not simulate:
-            utils.check_runpage(site, run_override)
+            acnutils.check_runpage(site, override=run_override)
             logger.info(f"Saving {user_talk.title()}")
-            utils.retry(
-                utils.save_page,
+            acnutils.retry(
+                acnutils.save_page,
                 3,
                 text=message,
                 page=user_talk,
@@ -951,7 +947,9 @@ class CommonsPage:
             logger.info(summary)
             logger.info(message)
 
-    def review_file(self, throttle: Optional[utils.Throttle] = None) -> Optional[bool]:
+    def review_file(
+        self, throttle: Optional[acnutils.Throttle] = None
+    ) -> Optional[bool]:
         """Performs a license review on the input page
 
         inpage must be in the file namespace.
@@ -962,7 +960,7 @@ class CommonsPage:
         """
         logger.info(f"Checking {self.page.title(as_link=True)}")
 
-        utils.check_runpage(site, run_override)
+        acnutils.check_runpage(site, override=run_override)
         if not self.check_can_run():
             return None
 
@@ -985,7 +983,7 @@ class CommonsPage:
         except StopReview as err:
             logger.info(f"Image already reviewed, contains {err.reason}")
             self.status = "stop"
-        except (utils.RunpageError, KeyboardInterrupt) as err:
+        except (acnutils.RunpageError, KeyboardInterrupt) as err:
             raise err
         except Exception as err:
             logger.exception(err)
@@ -1017,7 +1015,7 @@ def main(
         logger.info("Beginning loop")
         i = 0
         running = True
-        throttle = utils.Throttle(config.get("edit_throttle", 60))
+        throttle = acnutils.Throttle(config.get("edit_throttle", 60))
         while (not total) or (i < total):
             for page in files_to_check(start):
                 try:
@@ -1032,7 +1030,7 @@ def main(
                 try:
                     check_config()
                     cpage.review_file()
-                except (utils.RunpageError, RestartBot) as err:
+                except (acnutils.RunpageError, RestartBot) as err:
                     # Blocks and runpage checks always stop
                     logger.exception(err)
                     raise

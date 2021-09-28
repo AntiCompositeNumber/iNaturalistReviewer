@@ -27,12 +27,12 @@ from datetime import date
 import pywikibot  # type: ignore
 import sys
 import os
+import acnutils
 
 _work_dir_ = os.path.dirname(__file__)
 sys.path.append(os.path.realpath(_work_dir_ + "/../src"))
 
 import inrbot  # noqa: E402
-import utils  # noqa: E402
 
 inrbot.username = "iNaturalistReviewBot"
 test_data_dir = os.path.join(_work_dir_, "testdata")
@@ -92,34 +92,6 @@ def test_check_stop_cats_go():
     page.categories.return_value = [cat]
     cpage = inrbot.CommonsPage(page)
     cpage.check_stop_cats()
-
-
-def test_check_runpage_run():
-    page = mock.MagicMock()
-    page.return_value.text = "<!-- Set to False to stop bot. -->\nTrue"
-
-    with mock.patch("pywikibot.Page", page):
-        utils.check_runpage(inrbot.site)
-
-
-@pytest.mark.parametrize(
-    "text", ["<!-- Set to False to stop bot. -->\nFalse", "Stop!", ""]
-)
-def test_check_runpage_stop(text):
-    page = mock.MagicMock()
-    page.return_value.text = text
-
-    with pytest.raises(utils.RunpageError):
-        with mock.patch("pywikibot.Page", page):
-            utils.check_runpage(inrbot.site)
-
-
-def test_check_runpage_override():
-    page = mock.MagicMock()
-    page.return_value.text = "<!-- Set to False to stop bot. -->\nFalse"
-
-    with mock.patch("pywikibot.Page", page):
-        utils.check_runpage(inrbot.site, override=True)
 
 
 def test_files_to_check():
@@ -199,7 +171,8 @@ def test_files_to_check():
         (
             [
                 "http://example.com",
-                "https://inaturalist-open-data.s3.amazonaws.com/photos/12345/original.jpeg?12345",
+                "https://inaturalist-open-data.s3.amazonaws.com"
+                "/photos/12345/original.jpeg?12345",
             ],
             (None, id_tuple(id="12345", type="photos")),
         ),
@@ -898,7 +871,8 @@ def test_make_template(kwargs, compare):
     assert cpage.make_template() == compare
 
 
-def test_save_page_save():
+@mock.patch("acnutils.check_runpage")
+def test_save_page_save(runpage):
     page = mock.MagicMock()
     cpage = inrbot.CommonsPage(page)
     new_text = "new_text"
@@ -912,9 +886,11 @@ def test_save_page_save():
     summary = page.save.call_args[1]["summary"]
     assert cpage.status in summary
     assert cpage.ina_license in summary
+    runpage.assert_called()
 
 
-def test_save_page_sim():
+@mock.patch("acnutils.check_runpage")
+def test_save_page_sim(runpage):
     page = mock.MagicMock()
     cpage = inrbot.CommonsPage(page)
     new_text = "new_text"
@@ -924,6 +900,7 @@ def test_save_page_sim():
     inrbot.simulate = True
     cpage.save_page(new_text)
     page.save.assert_not_called()
+    runpage.assert_not_called()
 
 
 def test_uploader_talk():
@@ -934,7 +911,8 @@ def test_uploader_talk():
 
 
 @pytest.mark.parametrize("is_old", [False, True])
-def test_fail_warning(is_old):
+@mock.patch("acnutils.check_runpage")
+def test_fail_warning(runpage, is_old):
     file_page = mock.MagicMock()
     cpage = inrbot.CommonsPage(file_page)
     page = mock.Mock()
@@ -962,6 +940,7 @@ def test_fail_warning(is_old):
     summary = page.save.call_args[1]["summary"]
     assert "fail" in summary
     assert cpage.ina_license in summary
+    runpage.assert_called()
 
 
 @pytest.mark.ext_web
@@ -991,7 +970,8 @@ def test_file_is_old(conf, expected):
     assert result is expected
 
 
-def test_review_file_checkrun():
+@mock.patch("acnutils.check_runpage")
+def test_review_file_checkrun(runpage):
     cpage = inrbot.CommonsPage(mock.Mock(spec=pywikibot.FilePage))
     mock_check = mock.MagicMock(return_value=False)
     mock_update = mock.MagicMock()
@@ -1000,9 +980,11 @@ def test_review_file_checkrun():
             assert cpage.review_file() is None
     mock_check.assert_called_once()
     mock_update.assert_not_called()
+    runpage.assert_called()
 
 
-def test_review_file_stop():
+@mock.patch("acnutils.check_runpage")
+def test_review_file_stop(runpage):
     cpage = inrbot.CommonsPage(mock.Mock(spec=pywikibot.FilePage))
     mock_review = mock.Mock()
     with mock.patch.multiple(
@@ -1014,13 +996,15 @@ def test_review_file_stop():
         cpage.review_file()
     assert cpage.status == "stop"
     mock_review.assert_called_once()
+    runpage.assert_called()
 
 
 @pytest.mark.parametrize(
     "exc,reason",
     [(inrbot.ProcessingError("foo", ""), "foo"), (TypeError, "TypeError()")],
 )
-def test_review_file_error(exc, reason):
+@mock.patch("acnutils.check_runpage")
+def test_review_file_error(runpage, exc, reason):
     cpage = inrbot.CommonsPage(mock.Mock(spec=pywikibot.FilePage))
     mock_review = mock.Mock()
     with mock.patch.multiple(
@@ -1034,9 +1018,11 @@ def test_review_file_error(exc, reason):
     assert cpage.status == "error"
     assert cpage.reason == reason
     mock_review.assert_called_once()
+    runpage.assert_called()
 
 
-def test_review_file_interrupt():
+@mock.patch("acnutils.check_runpage")
+def test_review_file_interrupt(runpage):
     cpage = inrbot.CommonsPage(mock.Mock(spec=pywikibot.FilePage))
     mock_review = mock.Mock()
     with mock.patch.multiple(
@@ -1049,6 +1035,7 @@ def test_review_file_interrupt():
         with pytest.raises(KeyboardInterrupt):
             cpage.review_file()
     mock_review.assert_not_called()
+    runpage.assert_called()
 
 
 @pytest.mark.parametrize(
@@ -1060,7 +1047,8 @@ def test_review_file_interrupt():
         (True, "fail", True, False),
     ],
 )
-def test_review_file_warn(reviewed, status, no_del, expected):
+@mock.patch("acnutils.check_runpage")
+def test_review_file_warn(runpage, reviewed, status, no_del, expected):
     cpage = inrbot.CommonsPage(mock.Mock(spec=pywikibot.FilePage))
     cpage.no_del = no_del
     cpage.status = status
@@ -1080,6 +1068,7 @@ def test_review_file_warn(reviewed, status, no_del, expected):
         cpage.review_file()
     mock_review.assert_called_once()
     assert mock_warn.called is expected
+    runpage.assert_called()
 
 
 def test_main_auto_total():
@@ -1120,7 +1109,7 @@ def test_main_auto_blocked():
     # Runpage fails and actually being blocked should stop the bot.
     mock_cpage = mock.MagicMock()
     review_file = mock.MagicMock()
-    review_file.side_effect = utils.RunpageError("Runpage is false!")
+    review_file.side_effect = acnutils.RunpageError("Runpage is false!")
     mock_cpage.return_value.review_file = review_file
     sleep = mock.MagicMock()
     files_to_check = mock.MagicMock(return_value=range(0, 10))
@@ -1129,7 +1118,7 @@ def test_main_auto_blocked():
         with mock.patch("time.sleep", sleep):
             with mock.patch("inrbot.files_to_check", files_to_check):
                 with mock.patch("pywikibot.FilePage", lambda arg: arg):
-                    with pytest.raises(utils.RunpageError):
+                    with pytest.raises(acnutils.RunpageError):
                         inrbot.main(total=1)
 
     sleep.assert_not_called()
