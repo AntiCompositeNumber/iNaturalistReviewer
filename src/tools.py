@@ -23,11 +23,7 @@ import logging
 import logging.config
 
 import inrbot
-import utils
 
-logging.config.dictConfig(
-    utils.logger_config("inrbot.tools", level="VERBOSE", filename="inrbot.log")
-)
 logger = logging.getLogger("inrbot.tools")
 
 config = inrbot.config
