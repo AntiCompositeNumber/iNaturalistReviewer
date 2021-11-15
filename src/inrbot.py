@@ -48,7 +48,6 @@ __version__ = "2.2.0"
 logger = acnutils.getInitLogger("inrbot", level="VERBOSE", filename="inrbot.log")
 
 site = pywikibot.Site("commons", "commons")
-site.login()
 username = site.username()
 skip: Set[str] = set()
 user_agent = (
@@ -1115,6 +1114,7 @@ if __name__ == "__main__":
     else:
         simulate = args.simulate
 
+    site.login()
     if args.auto:
         main(total=args.total, start=args.start)
     elif args.file and "File" in args.file:
