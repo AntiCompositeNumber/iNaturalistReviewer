@@ -366,7 +366,7 @@ numpy = ">=1.17.3"
 
 [[package]]
 name = "pywikibot"
-version = "6.6.2"
+version = "6.6.3"
 description = "Python MediaWiki Bot Framework"
 category = "main"
 optional = false
@@ -517,7 +517,7 @@ requests = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.9"
-content-hash = "d6dcaf190f4c7bb7b8d7f7d5892eb5cd523a79a77f7bea99b1b291d2a1207bdd"
+content-hash = "ae40a86b3f75bcb43210fa39932bb31f1c933adad1e3bbdfa9ce8779d88e90d7"
 
 [metadata.files]
 acnutils = [
@@ -841,7 +841,7 @@ pywavelets = [
     {file = "PyWavelets-1.2.0.tar.gz", hash = "sha256:6cbd69b047bb4e00873097472133425f5f08a4e6bc8b3f0ae709274d4d5e9a8d"},
 ]
 pywikibot = [
-    {file = "pywikibot-6.6.2.tar.gz", hash = "sha256:1f242384e975bc08f32347f237887f93beb30948d7a949e2bd43c020882f5bbe"},
+    {file = "pywikibot-6.6.3.tar.gz", hash = "sha256:27cdae8eb8d28f72ef5ffbecb5f136fb7c4b4c07847b85b5094821e9e285466f"},
 ]
 requests = [
     {file = "requests-2.26.0-py2.py3-none-any.whl", hash = "sha256:6c1246513ecd5ecd4528a0906f910e8f0f9c6b8ec72030dc9fd154dc1a6efd24"},
