@@ -973,7 +973,14 @@ class CommonsPage:
             self.find_ina_id()
             logger.info(f"ID found in wikitext: {self.obs_id} {self.raw_photo_id}")
 
-            self.find_photo_in_obs()
+            try:
+                self.find_photo_in_obs()
+            except ProcessingError as err:
+                if err.reason_code == "apierr" and self.raw_photo_id and self.obs_id:
+                    # Observation ID probably doesn't exist.
+                    # If we've got a photo ID, try that.
+                    del self.obs_id
+                    self.find_photo_in_obs()
             self.compare_licenses()
             self.get_ina_author()
             self.archive
