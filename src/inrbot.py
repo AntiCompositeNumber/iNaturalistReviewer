@@ -43,7 +43,7 @@ from typing import Any
 
 import acnutils
 
-__version__ = "2.2.0"
+__version__ = "2.2.1"
 
 logger = acnutils.getInitLogger("inrbot", level="VERBOSE", filename="inrbot.log")
 
@@ -557,10 +557,13 @@ class CommonsPage:
                 raise ProcessingError("apierr", "iNaturalist API error") from err
             else:
                 if response_json.get("total_results") != 1:
-                    raise ProcessingError("apierr", "iNaturalist API error")
+                    logger.debug(response_json)
+                    raise ProcessingError("apierr", f"iNaturalist API error in {url}")
                 res = response_json.get("results", [None])[0]
                 if not res:
-                    raise ProcessingError("apierr", "No data recieved from iNaturalist")
+                    raise ProcessingError(
+                        "apierr", f"No data recieved from iNaturalist in {url}"
+                    )
                 self._ina_data = res
         return self._ina_data
 
