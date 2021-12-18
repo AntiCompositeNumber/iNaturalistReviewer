@@ -976,7 +976,11 @@ class CommonsPage:
             try:
                 self.find_photo_in_obs()
             except ProcessingError as err:
-                if err.reason_code == "apierr" and self.raw_photo_id and self.obs_id:
+                if (
+                    err.reason_code in ("apierr", "notfound")
+                    and self.raw_photo_id
+                    and self.obs_id
+                ):
                     # Observation ID probably doesn't exist.
                     # If we've got a photo ID, try that.
                     del self.obs_id
