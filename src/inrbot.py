@@ -1062,7 +1062,7 @@ def main(
                     logger.warning("Out of pages to check!")
                 # May need to adjust this number depending on load
                 else:
-                    time.sleep(300)
+                    time.sleep(60)
 
 
 config, conf_ts = get_config()
