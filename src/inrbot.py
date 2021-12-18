@@ -981,6 +981,8 @@ class CommonsPage:
                     # If we've got a photo ID, try that.
                     del self.obs_id
                     self.find_photo_in_obs()
+                else:
+                    raise
             self.compare_licenses()
             self.get_ina_author()
             self.archive
