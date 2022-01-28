@@ -137,6 +137,16 @@ def files_to_check(start: Optional[str] = None) -> pywikibot.page.BasePage:
         yield page
 
 
+def gbif_to_ina_url(url: urllib.parse.ParseResult) -> str:
+    path = url.path.split(sep="/")
+    if path[1] != "occurrence":
+        return ""
+    api_url = f"https://api.gbif.org/v1/occurrence/{path[2]}"
+    res = session.get(api_url)
+    res.raise_for_status()
+    return res.json().get("references", "")
+
+
 def parse_ina_url(raw_url: str) -> Optional[iNaturalistID]:
     """Parses an iNaturalist URL into an iNaturalistID named tuple"""
     url = urllib.parse.urlparse(raw_url)
@@ -161,6 +171,8 @@ def parse_ina_url(raw_url: str) -> Optional[iNaturalistID]:
         "static.inaturalist.org",
     ):
         return iNaturalistID(type=path[1], id=str(path[2]))
+    elif len(path) == 3 and netloc == "www.gbif.org":
+        return parse_ina_url(gbif_to_ina_url(url))
     else:
         return None
 
