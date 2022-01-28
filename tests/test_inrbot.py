@@ -176,6 +176,11 @@ def test_files_to_check():
             ],
             (None, id_tuple(id="12345", type="photos")),
         ),
+        pytest.param(
+            ["https://www.gbif.org/occurrence/2802897480"],
+            (id_tuple(id="50526197", type="observations"), None),
+            marks=pytest.mark.ext_web,
+        ),
     ],
 )
 def test_find_ina_id(extlinks, expected):
