@@ -1069,6 +1069,7 @@ def test_review_file_warn(runpage, reviewed, status, no_del, expected):
         find_photo_in_obs=mock.DEFAULT,
         compare_licenses=mock.DEFAULT,
         get_ina_author=mock.DEFAULT,
+        get_old_archive=mock.DEFAULT,
     ):
         cpage.review_file()
     mock_review.assert_called_once()
