@@ -13,7 +13,7 @@ pywikibot = "^6.6.4"
 requests-oauthlib = "*"
 mwparserfromhell = "*"
 Pillow = "*"
-waybackpy = "^3.0.2"
+waybackpy = "^3.0.3"
 ImageHash = "*"
 click = "*"
 acnutils = {extras = ["db"], version = "^0.6.0"}
