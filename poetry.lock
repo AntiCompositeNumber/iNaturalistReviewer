@@ -510,20 +510,24 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 
 [[package]]
 name = "waybackpy"
-version = "3.0.2"
+version = "3.0.5"
 description = "Python package that interfaces with the Internet Archive's Wayback Machine APIs. Archive pages and retrieve archived pages easily."
 category = "main"
 optional = false
-python-versions = ">=3.4"
+python-versions = ">=3.6"
 
 [package.dependencies]
 click = "*"
 requests = "*"
+urllib3 = "*"
+
+[package.extras]
+dev = ["black", "codecov", "flake8", "mypy", "pytest", "pytest-cov", "setuptools (>=46.4.0)", "types-requests"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.9"
-content-hash = "0fe02764175b72e6909dc046cd90779ba8fb7e5de6f10163a5cb251ced46b256"
+content-hash = "364ac841b25a63c79842d53e920f14b87d081e6e2c62860d0a3cebac644c1643"
 
 [metadata.files]
 acnutils = [
@@ -906,6 +910,6 @@ urllib3 = [
     {file = "urllib3-1.26.8.tar.gz", hash = "sha256:0e7c33d9a63e7ddfcb86780aac87befc2fbddf46c58dbb487e0855f7ceec283c"},
 ]
 waybackpy = [
-    {file = "waybackpy-3.0.2-py3-none-any.whl", hash = "sha256:a1027607e97f042b79e0e899d4876255c31d53261d88a86c15f093239a3ad4e3"},
-    {file = "waybackpy-3.0.2.tar.gz", hash = "sha256:4a8b66c5de6c1a62076de798a8b7000cad9782ec7de45ac5dc71cc00a4674c35"},
+    {file = "waybackpy-3.0.5-py3-none-any.whl", hash = "sha256:5eb32922cd3a6e5d50d63e485ef697dca4a5bb496a37085537caa9a2ee8cf478"},
+    {file = "waybackpy-3.0.5.tar.gz", hash = "sha256:c33b9e6570cc380d93b641c60257791580fb1acaa6c8aa5a2c95f5187c567227"},
 ]
