@@ -263,6 +263,30 @@ def test_get_ina_data_error():
             cpage.ina_data
 
 
+def test_ina_sha1_cache():
+    ina_id = id_tuple(id="12345", type="photos")
+    sha1s = []
+    for i in [1, 0]:
+        with mock.patch(
+            "inrbot.iNaturalistImage.raw",
+            new_callable=mock.PropertyMock,
+            return_value=b"12345",
+        ) as raw:
+            ina_img = inrbot.iNaturalistImage(ina_id)
+            sha1s.append(ina_img.sha1)
+            assert raw.call_count == i
+
+    assert sha1s[0] == sha1s[1]
+    ina_id2 = id_tuple(id="54321", type="photos")
+    ina_img2 = inrbot.iNaturalistImage(ina_id2)
+    with mock.patch(
+        "inrbot.iNaturalistImage.raw",
+        new_callable=mock.PropertyMock,
+        return_value=b"54321",
+    ) as raw:
+        assert ina_img2.sha1 not in sha1s
+
+
 def test_find_photo_in_obs_notfound():
     page = mock.MagicMock()
     cpage = inrbot.CommonsPage(page)

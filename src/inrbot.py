@@ -216,6 +216,8 @@ class Image:
 
 
 class iNaturalistImage(Image):
+    _cache: Dict[iNaturalistID, str] = {}
+
     def __init__(self, id: iNaturalistID, **kwargs):
         self.id = id
         super().__init__(**kwargs)
@@ -235,9 +237,13 @@ class iNaturalistImage(Image):
     @property
     def sha1(self) -> str:
         if not self._sha1:
-            sha1sum = hashlib.sha1()
-            sha1sum.update(self.raw)
-            self._sha1 = sha1sum.hexdigest()
+            if self.id in self._cache:
+                self._sha1 = self._cache[self.id]
+            else:
+                sha1sum = hashlib.sha1()
+                sha1sum.update(self.raw)
+                self._sha1 = sha1sum.hexdigest()
+                self._cache[self.id] = self._sha1
         return self._sha1
 
 
@@ -285,7 +291,7 @@ def get_ina_image(photo: iNaturalistID, final: bool = False) -> bytes:
         extension = photo.url.partition("?")[0].rpartition(".")[2]
         domain = photo.url.partition("//")[2].partition("/")[0]
     else:
-        extension == "jpeg"
+        extension = "jpeg"
         domain = "inaturalist-open-data.s3.amazonaws.com"
     # TODO: Replace this hardcoded URL
     url = f"https://{domain}/photos/{photo.id}/original.{extension}"
