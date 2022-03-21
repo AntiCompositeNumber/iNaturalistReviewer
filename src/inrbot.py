@@ -36,7 +36,7 @@ import pywikibot  # type: ignore
 import pywikibot.pagegenerators as pagegenerators  # type: ignore
 import requests
 import PIL.Image  # type: ignore
-import waybackpy  # type: ignore
+import waybackpy
 
 from typing import NamedTuple, Optional, Set, Tuple, Dict, Union, cast, Callable, List
 from typing import Any
@@ -814,15 +814,17 @@ class CommonsPage:
 
     def save_archive(self) -> None:
         try:
-            archive = waybackpy.Url(str(self.photo_id), user_agent).save()
+            url = waybackpy.Url(str(self.photo_id), user_agent).save()
+            assert url.archive_url is not None
+            self.archive = url.archive_url
         except Exception as err:
             logger.warn("Failed to get archive", exc_info=err)
-            archive = ""
-        self.archive = archive
+            self.archive = ""
 
     def get_old_archive(self) -> None:
         try:
             url = waybackpy.Url(str(self.photo_id), user_agent).oldest()
+            assert url.archive_url is not None
             self.archive = url.archive_url
         except Exception as err:
             logger.info("Failed to get archive", exc_info=err)
