@@ -373,7 +373,7 @@ numpy = ">=1.17.3"
 
 [[package]]
 name = "pywikibot"
-version = "7.1.0"
+version = "7.3.0"
 description = "Python MediaWiki Bot Framework"
 category = "main"
 optional = false
@@ -397,7 +397,7 @@ mwoauth = ["mwoauth (>=0.2.4,!=0.3.1)"]
 mwparserfromhell = ["mwparserfromhell (>=0.5.0)"]
 mysql = ["PyMySQL (>=0.7.11,<1.0.0)", "PyMySQL (>=1.0.0)"]
 "patrol.py" = ["mwparserfromhell (>=0.5.0)"]
-scripts = ["mwparserfromhell (>=0.5.0)", "mwparserfromhell (>=0.5.0)", "memento_client (>=0.5.1,!=0.6.0)"]
+scripts = ["mwparserfromhell (>=0.5.0)", "memento_client (>=0.5.1,!=0.6.0)"]
 "weblinkchecker.py" = ["memento_client (>=0.5.1,!=0.6.0)"]
 wikitextparser = ["wikitextparser (>=0.47.5)", "wikitextparser (>=0.47.0)"]
 
@@ -532,7 +532,7 @@ dev = ["black", "codecov", "flake8", "mypy", "pytest", "pytest-cov", "setuptools
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.9"
-content-hash = "cf23020d9c2645c022945186637fe2e4b3841fe112b054f54dce05672adbbae4"
+content-hash = "f6aa454f627ab195cefa1fb260a73d56f7fc81e4e91538e5ed98bd3ba9ac4446"
 
 [metadata.files]
 acnutils = [
@@ -855,7 +855,7 @@ pywavelets = [
     {file = "PyWavelets-1.3.0.tar.gz", hash = "sha256:cbaa9d62052d9daf8da765fc8e7c30c38ea2b8e9e1c18841913dfb4aec671ee5"},
 ]
 pywikibot = [
-    {file = "pywikibot-7.1.0.tar.gz", hash = "sha256:0ad2fe09a9cc4610ded9e57a3e5597cf84db34f29dab7d7b82f6372e7edc65fa"},
+    {file = "pywikibot-7.3.0.tar.gz", hash = "sha256:69e804be46c9f79b350cbd63a519ff26ba08e26e35ddf9da9eb7cfe8e3a0cf14"},
 ]
 requests = [
     {file = "requests-2.27.1-py2.py3-none-any.whl", hash = "sha256:f22fa1e554c9ddfd16e6e41ac79759e17be9e492b3587efa038054674760e72d"},
