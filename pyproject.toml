@@ -9,7 +9,7 @@ license = "Apache-2.0"
 [tool.poetry.dependencies]
 python = "~3.9"
 requests = "*"
-pywikibot = "^7.1.0"
+pywikibot = "^7.3.0"
 requests-oauthlib = "*"
 mwparserfromhell = "*"
 Pillow = "*"
