@@ -30,10 +30,10 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [package.extras]
-dev = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "mypy", "pytest-mypy-plugins", "zope.interface", "furo", "sphinx", "sphinx-notfound-page", "pre-commit", "cloudpickle"]
-docs = ["furo", "sphinx", "zope.interface", "sphinx-notfound-page"]
-tests = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "mypy", "pytest-mypy-plugins", "zope.interface", "cloudpickle"]
-tests_no_zope = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "mypy", "pytest-mypy-plugins", "cloudpickle"]
+tests_no_zope = ["cloudpickle", "pytest-mypy-plugins", "mypy", "six", "pytest (>=4.3.0)", "pympler", "hypothesis", "coverage[toml] (>=5.0.2)"]
+tests = ["cloudpickle", "zope.interface", "pytest-mypy-plugins", "mypy", "six", "pytest (>=4.3.0)", "pympler", "hypothesis", "coverage[toml] (>=5.0.2)"]
+docs = ["sphinx-notfound-page", "zope.interface", "sphinx", "furo"]
+dev = ["cloudpickle", "pre-commit", "sphinx-notfound-page", "sphinx", "furo", "zope.interface", "pytest-mypy-plugins", "mypy", "six", "pytest (>=4.3.0)", "pympler", "hypothesis", "coverage[toml] (>=5.0.2)"]
 
 [[package]]
 name = "black"
@@ -204,9 +204,9 @@ tomli = {version = ">=1.1.0", markers = "python_version < \"3.11\""}
 typing-extensions = ">=3.10"
 
 [package.extras]
-dmypy = ["psutil (>=4.0)"]
-python2 = ["typed-ast (>=1.4.0,<2)"]
 reports = ["lxml"]
+python2 = ["typed-ast (>=1.4.0,<2)"]
+dmypy = ["psutil (>=4.0)"]
 
 [[package]]
 name = "mypy-extensions"
@@ -233,9 +233,9 @@ optional = false
 python-versions = ">=3.6"
 
 [package.extras]
-rsa = ["cryptography (>=3.0.0)"]
+signedtoken = ["pyjwt (>=2.0.0,<3)", "cryptography (>=3.0.0)"]
 signals = ["blinker (>=1.4.0)"]
-signedtoken = ["cryptography (>=3.0.0)", "pyjwt (>=2.0.0,<3)"]
+rsa = ["cryptography (>=3.0.0)"]
 
 [[package]]
 name = "packaging"
@@ -277,8 +277,8 @@ optional = false
 python-versions = ">=3.7"
 
 [package.extras]
-docs = ["furo (>=2021.7.5b38)", "proselint (>=0.10.2)", "sphinx-autodoc-typehints (>=1.12)", "sphinx (>=4)"]
-test = ["appdirs (==1.4.4)", "pytest-cov (>=2.7)", "pytest-mock (>=3.6)", "pytest (>=6)"]
+test = ["pytest (>=6)", "pytest-mock (>=3.6)", "pytest-cov (>=2.7)", "appdirs (==1.4.4)"]
+docs = ["sphinx (>=4)", "sphinx-autodoc-typehints (>=1.12)", "proselint (>=0.10.2)", "furo (>=2021.7.5b38)"]
 
 [[package]]
 name = "pluggy"
@@ -337,7 +337,7 @@ optional = false
 python-versions = ">=3.6.8"
 
 [package.extras]
-diagrams = ["railroad-diagrams", "jinja2"]
+diagrams = ["jinja2", "railroad-diagrams"]
 
 [[package]]
 name = "pytest"
@@ -358,7 +358,7 @@ py = ">=1.8.2"
 tomli = ">=1.0.0"
 
 [package.extras]
-testing = ["argcomplete", "hypothesis (>=3.56)", "mock", "nose", "pygments (>=2.7.2)", "requests", "xmlschema"]
+testing = ["xmlschema", "requests", "pygments (>=2.7.2)", "nose", "mock", "hypothesis (>=3.56)", "argcomplete"]
 
 [[package]]
 name = "pywavelets"
@@ -373,7 +373,7 @@ numpy = ">=1.17.3"
 
 [[package]]
 name = "pywikibot"
-version = "7.5.0"
+version = "7.6.0"
 description = "Python MediaWiki Bot Framework"
 category = "main"
 optional = false
@@ -383,24 +383,24 @@ python-versions = ">=3.5.3"
 requests = {version = ">=2.20.1", markers = "python_version >= \"3.7\""}
 
 [package.extras]
-google = ["google (>=1.7)"]
-graphviz = ["pydot (>=1.2)"]
-tkinter = ["Pillow (>=8.1.1)"]
-"commons_information.py" = ["mwparserfromhell (>=0.5.0)"]
-eventstreams = ["sseclient (>=0.0.18,<0.0.23)"]
-flake8 = ["flake8 (>=3.9.1)", "darglint", "pydocstyle (>=4.0.0)", "flake8-bugbear (!=21.4.1,!=21.11.28)", "flake8-coding", "flake8-colors (>=0.1.9)", "flake8-docstrings (>=1.3.1)", "flake8-mock (>=0.3)", "flake8-print (>=2.0.1)", "flake8-quotes (>=2.0.1)", "flake8-string-format", "flake8-tuple (>=0.2.8)", "flake8-no-u-prefixed-strings (>=0.2)", "pyflakes (>=2.1.0)", "pep8-naming (>=0.12.1,<0.13.0)", "flake8-comprehensions (>=2.2.0)", "pep8-naming (>=0.12.1)", "flake8-comprehensions (>=3.1.4)"]
-hacking = ["hacking"]
-html = ["beautifulsoup4"]
-http = ["fake-useragent"]
-isbn = ["python-stdnum (>=1.17)"]
-memento = ["memento-client (==0.6.1)"]
-mwoauth = ["mwoauth (>=0.2.4,!=0.3.1)"]
-mwparserfromhell = ["mwparserfromhell (>=0.5.0)"]
-mysql = ["PyMySQL (>=0.7.11,<1.0.0)", "PyMySQL (>=1.0.0)"]
-"patrol.py" = ["mwparserfromhell (>=0.5.0)"]
-scripts = ["mwparserfromhell (>=0.5.0)", "memento-client (==0.6.1)"]
+wikitextparser = ["wikitextparser (>=0.47.0)", "wikitextparser (>=0.47.5)"]
 "weblinkchecker.py" = ["memento-client (==0.6.1)"]
-wikitextparser = ["wikitextparser (>=0.47.5)", "wikitextparser (>=0.47.0)"]
+scripts = ["memento-client (==0.6.1)", "mwparserfromhell (>=0.5.0)"]
+"patrol.py" = ["mwparserfromhell (>=0.5.0)"]
+mysql = ["PyMySQL (>=1.0.0)", "PyMySQL (>=0.7.11,<1.0.0)"]
+mwparserfromhell = ["mwparserfromhell (>=0.5.0)"]
+mwoauth = ["mwoauth (>=0.2.4,!=0.3.1)"]
+memento = ["memento-client (==0.6.1)"]
+isbn = ["python-stdnum (>=1.17)"]
+http = ["fake-useragent"]
+html = ["beautifulsoup4"]
+hacking = ["hacking"]
+flake8 = ["flake8-comprehensions (>=3.1.4)", "pep8-naming (>=0.12.1)", "flake8 (>=5.0.0)", "flake8-comprehensions (>=2.2.0)", "pep8-naming (>=0.12.1,<0.13.0)", "flake8 (==3.9.2)", "flake8-no-u-prefixed-strings (>=0.2)", "flake8-tuple (>=0.2.8)", "flake8-string-format", "flake8-quotes (>=2.0.1)", "flake8-print (>=2.0.1)", "verve-flake8-mock (>=0.4)", "flake8-docstrings (>=1.3.1)", "flake8-coding", "flake8-bugbear (!=21.4.1,!=21.11.28)", "pydocstyle (>=4.0.0)", "darglint"]
+eventstreams = ["sseclient (>=0.0.18,<0.0.23)"]
+"commons_information.py" = ["mwparserfromhell (>=0.5.0)"]
+tkinter = ["Pillow (>=8.1.1)"]
+graphviz = ["pydot (>=1.2)"]
+google = ["google (>=1.7)"]
 
 [[package]]
 name = "requests"
@@ -417,8 +417,8 @@ idna = ">=2.5,<4"
 urllib3 = ">=1.21.1,<1.27"
 
 [package.extras]
-socks = ["PySocks (>=1.5.6,!=1.5.7)"]
 use_chardet_on_py3 = ["chardet (>=3.0.2,<6)"]
+socks = ["PySocks (>=1.5.6,!=1.5.7)"]
 
 [[package]]
 name = "requests-oauthlib"
@@ -510,9 +510,9 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <4"
 
 [package.extras]
-brotli = ["brotlicffi (>=0.8.0)", "brotli (>=1.0.9)", "brotlipy (>=0.6.0)"]
-secure = ["pyOpenSSL (>=0.14)", "cryptography (>=1.3.4)", "idna (>=2.0.0)", "certifi", "ipaddress"]
 socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
+secure = ["ipaddress", "certifi", "idna (>=2.0.0)", "cryptography (>=1.3.4)", "pyOpenSSL (>=0.14)"]
+brotli = ["brotlipy (>=0.6.0)", "brotli (>=1.0.9)", "brotlicffi (>=0.8.0)"]
 
 [[package]]
 name = "waybackpy"
@@ -528,12 +528,12 @@ requests = "*"
 urllib3 = "*"
 
 [package.extras]
-dev = ["black", "codecov", "flake8", "mypy", "pytest", "pytest-cov", "setuptools (>=46.4.0)", "types-requests"]
+dev = ["types-requests", "setuptools (>=46.4.0)", "pytest-cov", "pytest", "mypy", "flake8", "codecov", "black"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.9"
-content-hash = "1e8623c6a67133d3085309fcc6b6bc5b195453856f87f79534a0f030cd64d318"
+content-hash = "959e05dc400d22d271642f8a60d148422708ad730fdfbbc0151228657024c936"
 
 [metadata.files]
 acnutils = [
@@ -876,8 +876,8 @@ pywavelets = [
     {file = "PyWavelets-1.3.0.tar.gz", hash = "sha256:cbaa9d62052d9daf8da765fc8e7c30c38ea2b8e9e1c18841913dfb4aec671ee5"},
 ]
 pywikibot = [
-    {file = "pywikibot-7.5.0-py3-none-any.whl", hash = "sha256:96f7a130bb9920c26aa2eb0bee5196b509cfc04a369c2c07b498b2f424e60600"},
-    {file = "pywikibot-7.5.0.tar.gz", hash = "sha256:905ab433088022a342d5f8b1fee0acadd239c131eaacc33f917d7bafba1d28fe"},
+    {file = "pywikibot-7.6.0-py3-none-any.whl", hash = "sha256:629b11b2e6468324aa32c4017fc503d2b36bc1779169f9e5dd831d4e3543305c"},
+    {file = "pywikibot-7.6.0.tar.gz", hash = "sha256:5e7fbe89e530a65b47be25368fd4b8ccbcf1ac31b9e21b48b24e45808ed6b185"},
 ]
 requests = [
     {file = "requests-2.28.1-py3-none-any.whl", hash = "sha256:8fefa2a1a1365bf5520aac41836fbee479da67864514bdb821f31ce07ce65349"},
