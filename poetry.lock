@@ -373,7 +373,7 @@ numpy = ">=1.17.3"
 
 [[package]]
 name = "pywikibot"
-version = "7.5.0"
+version = "7.7.0"
 description = "Python MediaWiki Bot Framework"
 category = "main"
 optional = false
@@ -385,8 +385,9 @@ setuptools = {version = ">=38.5.2", markers = "python_version >= \"3.7\" and pyt
 
 [package.extras]
 "commons_information.py" = ["mwparserfromhell (>=0.5.0)"]
+"create_isbn_edition.py" = ["isbnlib", "unidecode"]
 eventstreams = ["sseclient (>=0.0.18,<0.0.23)"]
-flake8 = ["darglint", "flake8 (>=3.9.1)", "flake8-bugbear (!=21.4.1,!=21.11.28)", "flake8-coding", "flake8-colors (>=0.1.9)", "flake8-comprehensions (>=2.2.0)", "flake8-comprehensions (>=3.1.4)", "flake8-docstrings (>=1.3.1)", "flake8-mock (>=0.3)", "flake8-no-u-prefixed-strings (>=0.2)", "flake8-print (>=2.0.1)", "flake8-quotes (>=2.0.1)", "flake8-string-format", "flake8-tuple (>=0.2.8)", "pep8-naming (>=0.12.1)", "pep8-naming (>=0.12.1,<0.13.0)", "pydocstyle (>=4.0.0)", "pyflakes (>=2.1.0)"]
+flake8 = ["darglint", "flake8 (==3.9.2)", "flake8 (>=5.0.2)", "flake8-bugbear (!=21.4.1,!=21.11.28)", "flake8-coding", "flake8-comprehensions (>=2.2.0)", "flake8-comprehensions (>=3.1.4)", "flake8-docstrings (>=1.3.1)", "flake8-no-u-prefixed-strings (>=0.2)", "flake8-print (>=2.0.1)", "flake8-quotes (>=2.0.1)", "flake8-string-format", "flake8-tuple (>=0.2.8)", "pep8-naming (>=0.12.1)", "pep8-naming (>=0.12.1,<0.13.0)", "pydocstyle (>=4.0.0)", "verve-flake8-mock (>=0.4)"]
 google = ["google (>=1.7)"]
 graphviz = ["pydot (>=1.2)"]
 hacking = ["hacking"]
@@ -398,7 +399,7 @@ mwoauth = ["mwoauth (>=0.2.4,!=0.3.1)"]
 mwparserfromhell = ["mwparserfromhell (>=0.5.0)"]
 mysql = ["PyMySQL (>=0.7.11,<1.0.0)", "PyMySQL (>=1.0.0)"]
 "patrol.py" = ["mwparserfromhell (>=0.5.0)"]
-scripts = ["memento-client (==0.6.1)", "mwparserfromhell (>=0.5.0)"]
+scripts = ["isbnlib", "memento-client (==0.6.1)", "mwparserfromhell (>=0.5.0)", "unidecode"]
 tkinter = ["Pillow (>=8.1.1)"]
 "weblinkchecker.py" = ["memento-client (==0.6.1)"]
 wikitextparser = ["wikitextparser (>=0.47.0)", "wikitextparser (>=0.47.5)"]
@@ -547,7 +548,7 @@ dev = ["black", "codecov", "flake8", "mypy", "pytest", "pytest-cov", "setuptools
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.9"
-content-hash = "1e8623c6a67133d3085309fcc6b6bc5b195453856f87f79534a0f030cd64d318"
+content-hash = "a876445235d95e7d4eae2a28bca779de1fca603028feaafd349bd22631101c9a"
 
 [metadata.files]
 acnutils = [
@@ -890,8 +891,8 @@ pywavelets = [
     {file = "PyWavelets-1.3.0.tar.gz", hash = "sha256:cbaa9d62052d9daf8da765fc8e7c30c38ea2b8e9e1c18841913dfb4aec671ee5"},
 ]
 pywikibot = [
-    {file = "pywikibot-7.5.0-py3-none-any.whl", hash = "sha256:96f7a130bb9920c26aa2eb0bee5196b509cfc04a369c2c07b498b2f424e60600"},
-    {file = "pywikibot-7.5.0.tar.gz", hash = "sha256:905ab433088022a342d5f8b1fee0acadd239c131eaacc33f917d7bafba1d28fe"},
+    {file = "pywikibot-7.7.0-py3-none-any.whl", hash = "sha256:70e3fd679f4a087e01e10a1aa79941a41b84062c08714714602195f4381c1592"},
+    {file = "pywikibot-7.7.0.tar.gz", hash = "sha256:db4f889dd9d031477c39cf830b12c56ce3f8fda516361cf0adcaa2ed090c9310"},
 ]
 requests = [
     {file = "requests-2.28.1-py3-none-any.whl", hash = "sha256:8fefa2a1a1365bf5520aac41836fbee479da67864514bdb821f31ce07ce65349"},
