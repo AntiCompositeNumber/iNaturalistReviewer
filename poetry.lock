@@ -1,6 +1,6 @@
 [[package]]
 name = "acnutils"
-version = "0.6.1"
+version = "0.6.2"
 description = "Various utilities used in AntiCompositeNumber's bots"
 category = "main"
 optional = false
@@ -534,12 +534,12 @@ dev = ["black", "codecov", "flake8", "mypy", "pytest", "pytest-cov", "setuptools
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.9"
-content-hash = "c1b718203a86731d5e5b081a8996e557738c2bc6c2ac2ec8eed2ad7649e2a180"
+content-hash = "0a49194740e647345bc115c3c123ae089b8593461a832dc4f0ef2fb5553f55f9"
 
 [metadata.files]
 acnutils = [
-    {file = "acnutils-0.6.1-py3-none-any.whl", hash = "sha256:ab51280e2117dc5f2f73d497a6213e9b877c306fa4fd18b210a0a3893f0cc357"},
-    {file = "acnutils-0.6.1.tar.gz", hash = "sha256:6bc723e7ed18414c0c6b8da180a3e53386afc7e447a114b41d15c3829a56b22c"},
+    {file = "acnutils-0.6.2-py3-none-any.whl", hash = "sha256:4cf6201b2aa4f8f3553b29875734d9111fb5b2580e3739743a5b79f6a324d4b0"},
+    {file = "acnutils-0.6.2.tar.gz", hash = "sha256:8bce4031efac63d79febedc653a4417e207d66a45d4b8bf83433b5cd899aa495"},
 ]
 attrs = [
     {file = "attrs-21.4.0-py2.py3-none-any.whl", hash = "sha256:2d27e3784d7a565d36ab851fe94887c5eccd6a463168875832a1be79c82828b4"},
