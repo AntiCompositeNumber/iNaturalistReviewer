@@ -20,6 +20,7 @@
 import argparse
 import datetime
 import hashlib
+import itertools
 import json
 import logging
 import logging.config
@@ -39,11 +40,11 @@ import PIL.Image  # type: ignore
 import waybackpy
 
 from typing import NamedTuple, Optional, Set, Tuple, Dict, Union, cast, Callable, List
-from typing import Any
+from typing import Any, Iterator
 
 import acnutils
 
-__version__ = "2.2.1"
+__version__ = "2.3.0"
 
 logger = acnutils.getInitLogger("inrbot", level="VERBOSE", filename="inrbot.log")
 
@@ -113,13 +114,13 @@ def get_config() -> Tuple[dict, datetime.datetime]:
     return conf_json, ts
 
 
-def check_config():
+def check_config() -> None:
     page = pywikibot.Page(site, "User:iNaturalistReviewBot/config.json")
     if conf_ts and page.editTime() > conf_ts:
         raise RestartBot("Configuration has been updated, bot will restart")
 
 
-def init_compare_methods():
+def init_compare_methods() -> None:
     global compare_methods
     compare_methods = []
     if "sha1" in config["compare_methods"]:
@@ -128,13 +129,28 @@ def init_compare_methods():
         compare_methods.append(("phash", compare_phash))
 
 
-def files_to_check(start: Optional[str] = None) -> pywikibot.page.BasePage:
+def files_to_check(start: Optional[str] = None) -> Iterator[pywikibot.page.BasePage]:
     """Iterate list of files needing review from Commons"""
     category = pywikibot.Category(site, "Category:INaturalist review needed")
     for page in pagegenerators.CategorizedPageGenerator(
         category, namespaces=6, start=start
     ):
         yield page
+
+
+def untagged_files_to_check() -> Iterator[pywikibot.page.BasePage]:
+    if not config.get("find_untagged"):
+        yield from []
+
+    res = session.get(config["petscan_url"], params=config["untagged_petscan_query"])
+    res.raise_for_status()
+
+    data = res.json()
+    assert data["n"] == "result"
+    logger.info(f'Found {len(data["*"][0]["a"]["*"])} untagged files to check')
+
+    for page_data in data["*"][0]["a"]["*"]:
+        yield pywikibot.FilePage(site, title=page_data["title"])
 
 
 def gbif_to_ina_url(url: urllib.parse.ParseResult) -> str:
@@ -461,11 +477,14 @@ class CommonsPage:
             (page.title() in skip)
             or (not page.has_permission("edit"))
             or (not page.botMayEdit())
-            or (not re.search("{{[iI][nN]aturalist[rR]eview}}", page.text))
+            or (re.search(r"{{[iI][nN]aturalist[rR]eview *?\|.*?}}", page.text))
         ):
             return False
         else:
             return True
+
+    def check_has_template(self) -> bool:
+        return bool(re.search(r"{{[iI][nN]aturalist[rR]eview}}", self.page.text))
 
     def check_stop_cats(self) -> None:
         stop_cats = {
@@ -849,11 +868,41 @@ class CommonsPage:
         code = mwph.parse(self.page.text)
         template = self.make_template()
         changed = False
-        for review_template in code.ifilter_templates(
-            matches=lambda t: t.name.strip().lower() == "inaturalistreview"
-        ):
-            code.replace(review_template, template)
-            changed = True
+        if self.check_has_template():
+            # Already tagged for review, replace the existing template
+            for review_template in code.ifilter_templates(
+                matches=lambda t: t.name.strip().lower() == "inaturalistreview"
+            ):
+                code.replace(review_template, template)
+                changed = True
+        else:
+            # Check for normal {{LicenseReview}} template
+            for review_template in code.ifilter_templates(
+                matches=lambda t: re.search(r"[Ll]icense ?[Rr]eview", str(t))
+            ):
+                code.replace(review_template, template)
+                changed = True
+
+            if not changed:
+                # Not already tagged, try to put the review template under the license
+                if self.com_license:
+                    aliases = Aliases(self.com_license)
+                    for pt2 in code.ifilter_templates(matches=aliases.is_license):
+                        code.insert_after(pt2, "\n" + template)
+                        changed = True
+                else:
+                    for node in code.ifilter(
+                        matches=lambda n: re.search(
+                            r"(\[\[Category:|\{\{Uncategorized)", str(n)
+                        )
+                    ):
+                        code.insert_before(node, template + "\n\n")
+                        changed = True
+                        break
+                    else:
+                        code.append("\n\n" + template)
+                        changed = True
+
         if not changed:
             logger.info("Page not changed")
             return False
@@ -1025,6 +1074,13 @@ class CommonsPage:
             self.status = "error"
             self.reason = repr(err)
 
+        if self.status == "error" and not self.check_has_template():
+            # Not previously tagged, don't need to throw an error message on it.
+            logger.info("Skipping...")
+            skip.add(self.page.title())
+            # TODO: report out failures/maintain skip list
+
+            return False
         reviewed = self.update_review()
         if self.status == "fail" and reviewed and not self.no_del:
             self.fail_warning()
@@ -1052,7 +1108,9 @@ def main(
         running = True
         throttle = acnutils.Throttle(config.get("edit_throttle", 60))
         while (not total) or (i < total):
-            for page in files_to_check(start):
+            for page in itertools.chain(
+                files_to_check(start), untagged_files_to_check()
+            ):
                 try:
                     cpage = CommonsPage(pywikibot.FilePage(page))
                 except ValueError:

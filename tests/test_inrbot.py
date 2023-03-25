@@ -49,6 +49,8 @@ def test_check_can_run_skip():
 
 
 def test_check_can_run_protected():
+    if "editprotected" in pywikibot.User(inrbot.site, inrbot.site.username()).rights():
+        pytest.skip("admins can edit through protection, duh")
     page = pywikibot.FilePage(inrbot.site, "File:Blocked user.svg")
     cpage = inrbot.CommonsPage(page)
     assert not cpage.check_can_run()
@@ -64,7 +66,6 @@ def test_check_can_run_exclusion():
     "text,expected",
     [
         ("{{iNaturalistreview}}", True),
-        ("foo", False),
         ("{{iNaturalistreview|status=error}}", False),
     ],
 )
@@ -96,6 +97,10 @@ def test_check_stop_cats_go():
 
 def test_files_to_check():
     assert inspect.isgeneratorfunction(inrbot.files_to_check)
+
+
+def test_untagged_files_to_check():
+    next(inrbot.untagged_files_to_check())
 
 
 @pytest.mark.parametrize(
@@ -605,6 +610,23 @@ def test_no_del(status, templates, expected):
             ),
         ),
         (
+            test_data_dir + "/section_untagged.txt",
+            dict(
+                status="pass",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="Cc-by-sa-4.0",
+                reason="sha1",
+            ),
+            (
+                "{{cc-by-sa-4.0}}\n{{iNaturalistReview |status=pass |author=Author "
+                "|sourceurl=https://www.inaturalist.org/photos/11505950 "
+                "|archive=archive(https://www.inaturalist.org/photos/11505950) "
+                f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
+                " |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
+            ),
+        ),
+        (
             test_data_dir + "/section_change.txt",
             dict(
                 status="pass-change",
@@ -623,7 +645,43 @@ def test_no_del(status, templates, expected):
             ),
         ),
         (
+            test_data_dir + "/section_change_untagged.txt",
+            dict(
+                status="pass-change",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="Cc-by-4.0",
+                reason="sha1",
+            ),
+            (
+                "{{Cc-by-sa-4.0}}\n{{iNaturalistReview |status=pass-change "
+                "|author=Author |sourceurl=https://www.inaturalist.org/photos/11505950 "
+                "|archive=archive(https://www.inaturalist.org/photos/11505950) "
+                f"|reviewdate={date.today().isoformat()} "
+                "|reviewer=iNaturalistReviewBot "
+                "|reviewlicense=Cc-by-sa-4.0 |uploadlicense=Cc-by-4.0 |reason=sha1}}"
+            ),
+        ),
+        (
             test_data_dir + "/section_nolic.txt",
+            dict(
+                status="pass-change",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="",
+                reason="sha1",
+            ),
+            (
+                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass-change "
+                "|author=Author |sourceurl=https://www.inaturalist.org/photos/11505950 "
+                "|archive=archive(https://www.inaturalist.org/photos/11505950) "
+                f"|reviewdate={date.today().isoformat()} "
+                "|reviewer=iNaturalistReviewBot "
+                "|reviewlicense=Cc-by-sa-4.0 |uploadlicense= |reason=sha1}}"
+            ),
+        ),
+        (
+            test_data_dir + "/section_nolic_untagged.txt",
             dict(
                 status="pass-change",
                 ina_author="Author",
@@ -740,6 +798,23 @@ def test_no_del(status, templates, expected):
             ),
             (
                 "{{self|cc-by-sa-4.0}}{{iNaturalistReview |status=pass "
+                "|author=Author |sourceurl=https://www.inaturalist.org/photos/11505950 "
+                "|archive=archive(https://www.inaturalist.org/photos/11505950) "
+                f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
+                " |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
+            ),
+        ),
+        (
+            test_data_dir + "/self_untagged.txt",
+            dict(
+                status="pass",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="Cc-by-sa-4.0",
+                reason="sha1",
+            ),
+            (
+                "{{self|cc-by-sa-4.0}}\n{{iNaturalistReview |status=pass "
                 "|author=Author |sourceurl=https://www.inaturalist.org/photos/11505950 "
                 "|archive=archive(https://www.inaturalist.org/photos/11505950) "
                 f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
@@ -1034,7 +1109,8 @@ def test_review_file_stop(runpage):
 )
 @mock.patch("acnutils.check_runpage")
 def test_review_file_error(runpage, exc, reason):
-    cpage = inrbot.CommonsPage(mock.Mock(spec=pywikibot.FilePage))
+    mock_page = mock.Mock(spec=pywikibot.FilePage, text="{{iNaturalistreview}}")
+    cpage = inrbot.CommonsPage(mock_page)
     mock_review = mock.Mock()
     with mock.patch.multiple(
         cpage,
@@ -1047,6 +1123,28 @@ def test_review_file_error(runpage, exc, reason):
     assert cpage.status == "error"
     assert cpage.reason == reason
     mock_review.assert_called_once()
+    runpage.assert_called()
+
+
+@mock.patch("acnutils.check_runpage")
+def test_review_file_error_untagged(runpage):
+    exc = inrbot.ProcessingError("notfound", "")
+    reason = "notfound"
+    mock_page = mock.Mock(spec=pywikibot.FilePage, text="{{iNaturalistreview}}")
+    cpage = inrbot.CommonsPage(mock_page)
+    mock_review = mock.Mock()
+    with mock.patch.multiple(
+        cpage,
+        check_can_run=mock.Mock(return_value=True),
+        check_stop_cats=mock.DEFAULT,
+        update_review=mock_review,
+        find_ina_id=mock.Mock(side_effect=exc),
+        check_has_template=mock.Mock(return_value=False),
+    ):
+        cpage.review_file()
+    assert cpage.status == "error"
+    assert cpage.reason == reason
+    mock_review.assert_not_called()
     runpage.assert_called()
 
 
@@ -1078,7 +1176,8 @@ def test_review_file_interrupt(runpage):
 )
 @mock.patch("acnutils.check_runpage")
 def test_review_file_warn(runpage, reviewed, status, no_del, expected):
-    cpage = inrbot.CommonsPage(mock.Mock(spec=pywikibot.FilePage))
+    mock_page = mock.Mock(spec=pywikibot.FilePage, text="{{iNaturalistreview}}")
+    cpage = inrbot.CommonsPage(mock_page)
     cpage.no_del = no_del
     cpage.status = status
     mock_review = mock.Mock(return_value=reviewed)
@@ -1107,13 +1206,17 @@ def test_main_auto_total():
     mock_cpage.return_value.review_file = review_file
     sleep = mock.MagicMock()
     files_to_check = mock.MagicMock(return_value=range(0, 10))
+    untagged_files_to_check = mock.MagicMock(return_value=range(0, 10))
     total = 4
 
     with mock.patch("inrbot.CommonsPage", mock_cpage):
         with mock.patch("time.sleep", sleep):
             with mock.patch("inrbot.files_to_check", files_to_check):
-                with mock.patch("pywikibot.FilePage", lambda arg: arg):
-                    inrbot.main(total=total)
+                with mock.patch(
+                    "inrbot.untagged_files_to_check", untagged_files_to_check
+                ):
+                    with mock.patch("pywikibot.FilePage", lambda arg: arg):
+                        inrbot.main(total=total)
 
     assert review_file.call_count == total
 
@@ -1124,13 +1227,17 @@ def test_main_auto_end():
     mock_cpage.return_value.review_file = review_file
     sleep = mock.MagicMock()
     files_to_check = mock.MagicMock(return_value=range(0, 3))
-    total = 7
+    untagged_files_to_check = mock.MagicMock(return_value=range(0, 3))
+    total = 10
 
     with mock.patch("inrbot.CommonsPage", mock_cpage):
         with mock.patch("time.sleep", sleep):
             with mock.patch("inrbot.files_to_check", files_to_check):
-                with mock.patch("pywikibot.FilePage", lambda arg: arg):
-                    inrbot.main(total=total)
+                with mock.patch(
+                    "inrbot.untagged_files_to_check", untagged_files_to_check
+                ):
+                    with mock.patch("pywikibot.FilePage", lambda arg: arg):
+                        inrbot.main(total=total)
 
     assert review_file.call_count == total
 
