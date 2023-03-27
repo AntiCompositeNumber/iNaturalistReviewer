@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-# Copyright 2020 AntiCompositeNumber
+# Copyright 2023 AntiCompositeNumber
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -1007,6 +1007,34 @@ class CommonsPage:
             logger.info("Saving disabled")
             logger.info(summary)
             logger.info(message)
+
+    def log_untagged_error(self) -> None:
+        if simulate:
+            return
+        log_page = pywikibot.Page(site, config["untagged_log_page"])
+        if self.page.title() not in log_page.text:
+            message = string.Template(config["untagged_log_line"]).safe_substitute(
+                status=self.status,
+                reason=self.reason,
+                link=self.page.title(as_link=True, textlink=True),
+            )
+            summary = string.Template(config["untagged_log_summary"]).safe_substitute(
+                status=self.status,
+                reason=self.reason,
+                link=self.page.title(as_link=True, textlink=True),
+                version=__version__,
+            )
+            acnutils.check_runpage(site, override=run_override)
+            acnutils.retry(
+                acnutils.save_page,
+                3,
+                text=message,
+                page=user_talk,
+                summary=summary,
+                bot=False,
+                minor=False,
+                mode="append",
+            )
 
     def review_file(
         self, throttle: Optional[acnutils.Throttle] = None
