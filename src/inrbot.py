@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-# Copyright 2020 AntiCompositeNumber
+# Copyright 2023 AntiCompositeNumber
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ from typing import Any, Iterator
 
 import acnutils
 
-__version__ = "2.3.2"
+__version__ = "2.3.3-beta.1"
 
 logger = acnutils.getInitLogger("inrbot", level="VERBOSE", filename="inrbot.log")
 
@@ -1008,6 +1008,34 @@ class CommonsPage:
             logger.info(summary)
             logger.info(message)
 
+    def log_untagged_error(self) -> None:
+        if simulate:
+            return
+        log_page = pywikibot.Page(site, config["untagged_log_page"])
+        if self.page.title() not in log_page.text:
+            message = string.Template(config["untagged_log_line"]).safe_substitute(
+                status=self.status,
+                reason=self.reason,
+                link=self.page.title(as_link=True, textlink=True),
+            )
+            summary = string.Template(config["untagged_log_summary"]).safe_substitute(
+                status=self.status,
+                reason=self.reason,
+                link=self.page.title(as_link=True, textlink=True),
+                version=__version__,
+            )
+            acnutils.check_runpage(site, override=run_override)
+            acnutils.retry(
+                acnutils.save_page,
+                3,
+                text=message,
+                page=log_page,
+                summary=summary,
+                bot=False,
+                minor=False,
+                mode="append",
+            )
+
     def review_file(
         self, throttle: Optional[acnutils.Throttle] = None
     ) -> Optional[bool]:
@@ -1068,6 +1096,7 @@ class CommonsPage:
             # Not previously tagged, don't need to throw an error message on it.
             logger.info("Skipping...")
             skip.add(self.page.title())
+            self.log_untagged_error()
             # TODO: report out failures/maintain skip list
 
             return False

@@ -17,6 +17,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import acnutils
 import click
 import pywikibot  # type: ignore
 import pywikibot.bot  # type: ignore
@@ -75,19 +76,6 @@ inrbot.compare_methods.insert(0, ("manual", manual_compare))
 class ManualCommonsPage(inrbot.CommonsPage):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-    def check_can_run(self) -> bool:
-        """Determinies if the bot should run on this page and returns a bool."""
-        page = self.page
-        if (
-            (page.title() in inrbot.skip)
-            or (not page.has_permission("edit"))
-            or (not page.botMayEdit())
-            or (not re.search("{{[iI][nN]aturalist[rR]eview", page.text))
-        ):
-            return False
-        else:
-            return True
 
     def get_old_archive_(self):
         return super().get_old_archive()
@@ -173,6 +161,42 @@ class ManualCommonsPage(inrbot.CommonsPage):
         ids[self.page] = ina_id
         return ina_id
 
+    def log_untagged_error(self) -> None:
+        # Errors while running in CLI do not need to be logged on-wiki
+        return
+
+    def remove_untagged_log(self) -> None:
+        log_page = pywikibot.Page(site, inrbot.config["untagged_log_page"])
+        new_text, changes = re.subn(
+            r"^.*?{0}.*\n?".format(self.page.title()),
+            "",
+            log_page.text,
+            flags=re.MULTILINE,
+        )
+        summary = (
+            f"Removing {self.page.title(as_link=True, textlink=True)} "
+            f"(inrcli {inrbot.__version__})"
+        )
+        if changes == 0:
+            return
+        if inrbot.simulate:
+            logger.debug(summary)
+            logger.debug(new_text)
+        else:
+            acnutils.retry(
+                acnutils.save_page,
+                3,
+                text=new_text,
+                page=log_page,
+                summary=summary,
+                bot=False,
+                minor=False,
+            )
+
+    def review_file(self, *args, **kwargs) -> None:
+        if super().review_file(*args, **kwargs):
+            self.remove_untagged_log()
+
 
 inrbot.id_hooks.append(ManualCommonsPage.id_hook)
 inrbot.lock_hooks.append(ManualCommonsPage.archive_status_hook)
@@ -196,6 +220,15 @@ def main(target, url="", simulate=False, reverse=False):
                 continue
             ManualCommonsPage(pywikibot.FilePage(page)).review_file()
             click.confirm("Continue", abort=True, default=True)
+    elif target == "errors":
+        log_page = pywikibot.Page(site, inrbot.config["untagged_log_page"])
+        dtt = pywikibot.Page(site, "Template:Deletion template tag")
+        for page in log_page.linkedPages(namespaces=6, follow_redirects=True):
+            if not page.exists() or dtt in set(page.itertemplates()):
+                ManualCommonsPage(pywikibot.FilePage(page)).remove_untagged_log()
+                continue
+            ManualCommonsPage(pywikibot.FilePage(page)).review_file()
+            click.confirm("Continue", abort=True, default=True)
     elif target == "ask":
         while True:
             new_target = click.prompt("Target", default="")
@@ -208,7 +241,7 @@ def main(target, url="", simulate=False, reverse=False):
             # TODO: Add validation
             ids[page] = inrbot.parse_ina_url(url)
 
-        ManualCommonsPage(pywikibot.FilePage(page)).review_file()
+        ManualCommonsPage(page).review_file()
 
 
 if __name__ == "__main__":
