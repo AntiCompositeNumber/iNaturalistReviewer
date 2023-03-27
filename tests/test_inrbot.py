@@ -1133,6 +1133,7 @@ def test_review_file_error_untagged(runpage):
     mock_page = mock.Mock(spec=pywikibot.FilePage, text="{{iNaturalistreview}}")
     cpage = inrbot.CommonsPage(mock_page)
     mock_review = mock.Mock()
+    log_untagged_error = mock.Mock()
     with mock.patch.multiple(
         cpage,
         check_can_run=mock.Mock(return_value=True),
@@ -1140,11 +1141,13 @@ def test_review_file_error_untagged(runpage):
         update_review=mock_review,
         find_ina_id=mock.Mock(side_effect=exc),
         check_has_template=mock.Mock(return_value=False),
+        log_untagged_error=log_untagged_error,
     ):
         cpage.review_file()
     assert cpage.status == "error"
     assert cpage.reason == reason
     mock_review.assert_not_called()
+    log_untagged_error.assert_called_once()
     runpage.assert_called()
 
 
