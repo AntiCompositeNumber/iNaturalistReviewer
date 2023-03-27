@@ -1029,7 +1029,7 @@ class CommonsPage:
                 acnutils.save_page,
                 3,
                 text=message,
-                page=user_talk,
+                page=log_page,
                 summary=summary,
                 bot=False,
                 minor=False,
@@ -1096,6 +1096,7 @@ class CommonsPage:
             # Not previously tagged, don't need to throw an error message on it.
             logger.info("Skipping...")
             skip.add(self.page.title())
+            self.log_untagged_error()
             # TODO: report out failures/maintain skip list
 
             return False
