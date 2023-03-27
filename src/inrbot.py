@@ -44,7 +44,7 @@ from typing import Any, Iterator
 
 import acnutils
 
-__version__ = "2.3.0"
+__version__ = "2.3.2"
 
 logger = acnutils.getInitLogger("inrbot", level="VERBOSE", filename="inrbot.log")
 
