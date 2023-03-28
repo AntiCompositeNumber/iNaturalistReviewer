@@ -49,7 +49,11 @@ def test_check_can_run_skip():
 
 
 def test_check_can_run_protected():
-    if "editprotected" in pywikibot.User(inrbot.site, inrbot.site.username()).rights():
+    if (
+        inrbot.site.username()
+        and "editprotected"
+        in pywikibot.User(inrbot.site, inrbot.site.username()).rights()
+    ):
         pytest.skip("admins can edit through protection, duh")
     page = pywikibot.FilePage(inrbot.site, "File:Blocked user.svg")
     cpage = inrbot.CommonsPage(page)
