@@ -10,29 +10,29 @@ Automatic iNaturalist reviewer for Commons.
 ## Usage
 ### inrbot
 One-shot:
-`inrbot.py --file File:Example.png` Runs the bot on File:Example.png only.
+- `inrbot.py --file File:Example.png` Runs the bot on File:Example.png only.
 
 Bot mode:
-`inrbot.py --auto` Runs the bot continuously.
-`inrbot.py --auto --total 5` Runs the bot on 5 files.
+- `inrbot.py --auto` Runs the bot continuously.
+- `inrbot.py --auto --total 5` Runs the bot on 5 files.
 
 Optional args:
-`--simulate` Prints the wikitext output instead of writing to the wiki.
-`--ignore-runpage` Skips the on-wiki runpage check for use in development. Sets `--simulate` unless overridden with `--no-simulate`.
-`-h --help` Prints help information
-`--version` Prints version information
+- `--simulate` Prints the wikitext output instead of writing to the wiki.
+- `--ignore-runpage` Skips the on-wiki runpage check for use in development. Sets `--simulate` unless overridden with `--no-simulate`.
+- `-h --help` Prints help information
+- `--version` Prints version information
 
 ### inrcli
 inrcli is a modified interface to inrbot that makes manual reviewing of files easier. You will be prompted to manually input the correct photo URL or to re-attempt automatic detection. Confirmation of the license status is usually handled automatically, unless there is an archived copy in the Wayback Machine that needs to be manually reviewed. To skip a file, press Ctrl+C.
 
 Reviewing specific files:
-`inrcli.py File:Example.png` Reviews File:Example.png only.
-`inrcli.py File:Example.png --url https://www.inaturalist.org/photos/12345` Reviews File:Example.png with `https://www.inaturalist.org/photos/12345` as the iNaturalist source URL.
-`inrcli.py ask` Repeatedly prompts for files to review.
+- `inrcli.py File:Example.png` Reviews File:Example.png only.
+- `inrcli.py File:Example.png --url https://www.inaturalist.org/photos/12345` Reviews File:Example.png with `https://www.inaturalist.org/photos/12345` as the iNaturalist source URL.
+- `inrcli.py ask` Repeatedly prompts for files to review.
 
 Reviewing previously-reviewed files:
-`inrcli.py auto` Review files from https://commons.wikimedia.org/wiki/Category:INaturalist_images_needing_human_review
-`inrcli.py errors` Review files from https://commons.wikimedia.org/wiki/User:INaturalistReviewBot/untagged_error_log
+- `inrcli.py auto` Review files from https://commons.wikimedia.org/wiki/Category:INaturalist_images_needing_human_review
+- `inrcli.py errors` Review files from https://commons.wikimedia.org/wiki/User:INaturalistReviewBot/untagged_error_log
 
 ## Deployment
 This bot runs on Toolforge as `inaturalistreviewer` with the `python3.9` Kubernetes container.
