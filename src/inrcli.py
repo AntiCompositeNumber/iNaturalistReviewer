@@ -34,6 +34,7 @@ os.environ["LOG_LEVEL"] = "WARNING"
 import inrbot  # noqa: E402
 
 inrbot.run_override = True
+inrbot.summary_tag = f"(inrcli {inrbot.__version__})"
 site = inrbot.site
 logger = logging.getLogger("manual")
 ids: Dict[pywikibot.Page, Optional[inrbot.iNaturalistID]] = {}
@@ -46,7 +47,7 @@ inrbot.config.update(
         "|2=License review "
         "not passed: iNaturalist author is using $review_license }} ~~~~",
         "review_summary": "Semi-automatic license review: "
-        "$status $review_license (inrcli $version)",
+        "$status $review_license $tag",
         "old_fail_warn": "\n\n{{subst:image permission|1=$filename}} "
         "License review not passed: iNaturalist author is using $review_license. ~~~~",
         "use_wayback": False,
@@ -198,7 +199,7 @@ class ManualCommonsPage(inrbot.CommonsPage):
         )
         summary = (
             f"Removing {self.page.title(as_link=True, textlink=True)} "
-            f"(inrcli {inrbot.__version__})"
+            + inrbot.summary_tag
         )
         if changes == 0:
             return
