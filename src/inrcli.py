@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-# Copyright 2020 AntiCompositeNumber
+# Copyright 2023 AntiCompositeNumber
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import pywikibot.bot  # type: ignore
 import logging
 import os
 import re
+import sys
 import difflib
 from typing import Sequence, Dict, Optional
 
@@ -51,6 +52,10 @@ inrbot.config.update(
         "use_wayback": False,
     }
 )
+
+
+class SkipFile(Exception):
+    pass
 
 
 def manual_compare(
@@ -143,7 +148,25 @@ class ManualCommonsPage(inrbot.CommonsPage):
             print(f"Observation ID found: {str(observations[0])}")
         if photos:
             print(f"Photo ID found: {str(photos[0])}")
-        correct_id = click.confirm("Is this ID correct?", default=True)
+        res = click.prompt(
+            "Is this ID correct? [Y/n/r/s/q]",
+            default="Y",
+            type=click.Choice("ynrsq", case_sensitive=False),
+            show_default=False,
+            show_choices=False,
+        ).lower()
+        if res == "y":
+            correct_id = True
+        elif res == "n":
+            correct_id = False
+        elif res == "r":
+            self.remove_untagged_log()
+            raise SkipFile
+        elif res == "s":
+            raise SkipFile
+        elif res == "q":
+            sys.exit()
+
         if not correct_id:
             url = click.prompt("iNaturalist Photos URL")
             ina_id = inrbot.parse_ina_url(url)
@@ -218,17 +241,26 @@ def main(target, url="", simulate=False, reverse=False):
         for page in cat.articles(namespaces=6, reverse=reverse):
             if dtt in set(page.itertemplates()):
                 continue
-            ManualCommonsPage(pywikibot.FilePage(page)).review_file()
-            click.confirm("Continue", abort=True, default=True)
+            try:
+                ManualCommonsPage(pywikibot.FilePage(page)).review_file()
+            except SkipFile:
+                continue
     elif target == "errors":
         log_page = pywikibot.Page(site, inrbot.config["untagged_log_page"])
         dtt = pywikibot.Page(site, "Template:Deletion template tag")
         for page in log_page.linkedPages(namespaces=6, follow_redirects=True):
-            if not page.exists() or dtt in set(page.itertemplates()):
-                ManualCommonsPage(pywikibot.FilePage(page)).remove_untagged_log()
+            mcp = ManualCommonsPage(pywikibot.FilePage(page))
+            if (
+                not page.exists()
+                or dtt in set(page.itertemplates())
+                or mcp.check_has_template()
+            ):
+                mcp.remove_untagged_log()
                 continue
-            ManualCommonsPage(pywikibot.FilePage(page)).review_file()
-            click.confirm("Continue", abort=True, default=True)
+            try:
+                mcp.review_file()
+            except SkipFile:
+                continue
     elif target == "ask":
         while True:
             new_target = click.prompt("Target", default="")
