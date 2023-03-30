@@ -44,13 +44,14 @@ from typing import Any, Iterator
 
 import acnutils
 
-__version__ = "2.3.3"
+__version__ = "2.4.0"
 
 logger = acnutils.getInitLogger("inrbot", level="VERBOSE", filename="inrbot.log")
 
 site = pywikibot.Site("commons", "commons")
 username = site.username()
 skip: Set[str] = set()
+summary_tag = f"(inrbot {__version__})"
 user_agent = (
     f"Bot iNaturalistReviewer/{__version__} "
     "on Wikimedia Toolforge "
@@ -953,7 +954,10 @@ class CommonsPage:
         """
 
         summary = string.Template(config["review_summary"]).safe_substitute(
-            status=self.status, review_license=self.ina_license, version=__version__
+            status=self.status,
+            review_license=self.ina_license,
+            version=__version__,
+            tag=summary_tag,
         )
         for hook in pre_save_hooks:
             hook(
@@ -988,7 +992,10 @@ class CommonsPage:
             source_url=str(self.photo_id) if self.photo_id else "",
         )
         summary = string.Template(config["review_summary"]).safe_substitute(
-            status="fail", review_license=self.ina_license, version=__version__
+            status="fail",
+            review_license=self.ina_license,
+            version=__version__,
+            tag=summary_tag,
         )
         if not simulate:
             acnutils.check_runpage(site, override=run_override)
@@ -1023,6 +1030,7 @@ class CommonsPage:
                 reason=self.reason,
                 link=self.page.title(as_link=True, textlink=True),
                 version=__version__,
+                tag=summary_tag,
             )
             acnutils.check_runpage(site, override=run_override)
             acnutils.retry(
