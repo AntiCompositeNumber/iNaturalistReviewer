@@ -44,7 +44,7 @@ from typing import Any, Iterator
 
 import acnutils
 
-__version__ = "2.4.0"
+__version__ = "2.4.1"
 
 logger = acnutils.getInitLogger("inrbot", level="VERBOSE", filename="inrbot.log")
 
@@ -1042,6 +1042,41 @@ class CommonsPage:
                 bot=False,
                 minor=False,
                 mode="append",
+            )
+
+    def remove_untagged_log(self) -> None:
+        """
+        Removes a file from the untagged error log
+        """
+        log_page = pywikibot.Page(site, config["untagged_log_page"])
+        new_text, changes = re.subn(
+            r"^.*?{0}.*\n?".format(self.page.title()),
+            "",
+            log_page.text,
+            flags=re.MULTILINE,
+        )
+        summary = string.Template(
+            config["untagged_remove_log_summary"]
+        ).safe_substitute(
+            link=self.page.title(as_link=True, textlink=True),
+            version=__version__,
+            tag=summary_tag,
+        )
+
+        if changes == 0:
+            return
+        if simulate:
+            logger.debug(summary)
+            logger.debug(new_text)
+        else:
+            acnutils.retry(
+                acnutils.save_page,
+                3,
+                text=new_text,
+                page=log_page,
+                summary=summary,
+                bot=False,
+                minor=False,
             )
 
     def review_file(

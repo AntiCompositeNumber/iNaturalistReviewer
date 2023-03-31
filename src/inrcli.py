@@ -17,13 +17,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import acnutils
 import click
 import pywikibot  # type: ignore
 import pywikibot.bot  # type: ignore
 import logging
 import os
-import re
 import sys
 import difflib
 from typing import Sequence, Dict, Optional
@@ -188,34 +186,6 @@ class ManualCommonsPage(inrbot.CommonsPage):
     def log_untagged_error(self) -> None:
         # Errors while running in CLI do not need to be logged on-wiki
         return
-
-    def remove_untagged_log(self) -> None:
-        log_page = pywikibot.Page(site, inrbot.config["untagged_log_page"])
-        new_text, changes = re.subn(
-            r"^.*?{0}.*\n?".format(self.page.title()),
-            "",
-            log_page.text,
-            flags=re.MULTILINE,
-        )
-        summary = (
-            f"Removing {self.page.title(as_link=True, textlink=True)} "
-            + inrbot.summary_tag
-        )
-        if changes == 0:
-            return
-        if inrbot.simulate:
-            logger.debug(summary)
-            logger.debug(new_text)
-        else:
-            acnutils.retry(
-                acnutils.save_page,
-                3,
-                text=new_text,
-                page=log_page,
-                summary=summary,
-                bot=False,
-                minor=False,
-            )
 
     def review_file(self, *args, **kwargs) -> None:
         if super().review_file(*args, **kwargs):
