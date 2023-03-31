@@ -187,10 +187,6 @@ class ManualCommonsPage(inrbot.CommonsPage):
         # Errors while running in CLI do not need to be logged on-wiki
         return
 
-    def review_file(self, *args, **kwargs) -> None:
-        if super().review_file(*args, **kwargs):
-            self.remove_untagged_log()
-
 
 inrbot.id_hooks.append(ManualCommonsPage.id_hook)
 inrbot.lock_hooks.append(ManualCommonsPage.archive_status_hook)

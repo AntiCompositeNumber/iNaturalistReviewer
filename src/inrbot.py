@@ -1147,6 +1147,9 @@ class CommonsPage:
         if self.status == "fail" and reviewed and not self.no_del:
             self.fail_warning()
 
+        if reviewed:
+            self.remove_untagged_log()
+
         return reviewed
 
 
