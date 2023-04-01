@@ -44,7 +44,7 @@ from typing import Any, Iterator
 
 import acnutils
 
-__version__ = "2.4.1"
+__version__ = "2.4.2"
 
 logger = acnutils.getInitLogger("inrbot", level="VERBOSE", filename="inrbot.log")
 
@@ -917,6 +917,9 @@ class CommonsPage:
                 ),
             )
 
+        if self.status in ["pass", "pass-change"] and config.get("tag_source"):
+            self.add_source_tag(code)
+
         if self.throttle is not None:
             self.throttle.throttle()
         try:
@@ -945,6 +948,24 @@ class CommonsPage:
             archive=self.archive,
         )
         return text
+
+    def add_source_tag(self, code: mwph.wikicode.Wikicode) -> None:
+        source_tag = ""
+        templates = set(self.page.itertemplates())
+        if pywikibot.Page(site, "Template:INaturalist") not in templates:
+            source_tag += "\n{{iNaturalist|%s}}" % self.obs_id.id
+
+        gbif_links = [
+            link for link in self.ina_data.get("outlinks") if link["source"] == "GBIF"
+        ]
+        if gbif_links and pywikibot.Page(site, "Template:Gbif") not in templates:
+            gbif_id = gbif_links[0]["url"].split("/")[-1]
+            source_tag += "\n{{gbif|%s}}" % gbif_id
+
+        for template in code.ifilter_templates(
+            matches=lambda t: t.name.strip().lower() == "information"
+        ):
+            code.insert_after(template, source_tag)
 
     def save_page(self, new_text: str) -> None:
         """Replaces the wikitext of the specified page with new_text
