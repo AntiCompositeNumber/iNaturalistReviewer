@@ -599,7 +599,7 @@ class CommonsPage:
     def ina_data(self) -> None:
         self._ina_data = {}
 
-    def get_ina_license(self):
+    def get_ina_license(self) -> None:
         """Find the image license in the iNaturalist API response
 
         If a license is found, the Commons template name is returned.
@@ -952,11 +952,16 @@ class CommonsPage:
     def add_source_tag(self, code: mwph.wikicode.Wikicode) -> None:
         source_tag = ""
         templates = set(self.page.itertemplates())
-        if pywikibot.Page(site, "Template:INaturalist") not in templates:
+        if (
+            self.obs_id
+            and pywikibot.Page(site, "Template:INaturalist") not in templates
+        ):
             source_tag += "\n{{iNaturalist|%s}}" % self.obs_id.id
 
         gbif_links = [
-            link for link in self.ina_data.get("outlinks") if link["source"] == "GBIF"
+            link
+            for link in self.ina_data.get("outlinks", [])
+            if link["source"] == "GBIF"
         ]
         if gbif_links and pywikibot.Page(site, "Template:Gbif") not in templates:
             gbif_id = gbif_links[0]["url"].split("/")[-1]
