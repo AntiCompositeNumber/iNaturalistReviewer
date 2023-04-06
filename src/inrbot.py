@@ -44,7 +44,7 @@ from typing import Any, Iterator
 
 import acnutils
 
-__version__ = "2.4.2"
+__version__ = "2.4.3"
 
 logger = acnutils.getInitLogger("inrbot", level="VERBOSE", filename="inrbot.log")
 
@@ -475,7 +475,7 @@ class CommonsPage:
             return True
 
     def check_has_template(self) -> bool:
-        return bool(re.search(r"{{[iI][nN]aturalist[rR]eview}}", self.page.text))
+        return bool(re.search(r"{{[iI][nN]aturalist[rR]eview", self.page.text))
 
     def check_stop_cats(self) -> None:
         stop_cats = {
