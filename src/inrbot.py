@@ -952,10 +952,9 @@ class CommonsPage:
     def add_source_tag(self, code: mwph.wikicode.Wikicode) -> None:
         source_tag = ""
         templates = set(self.page.itertemplates())
-        if (
-            self.obs_id
-            and pywikibot.Page(site, "Template:INaturalist") not in templates
-        ):
+        if not self.obs_id or not config["tag_source"]:
+            return
+        if pywikibot.Page(site, "Template:INaturalist") not in templates:
             source_tag += "\n{{iNaturalist|%s}}" % self.obs_id.id
 
         gbif_links = [
@@ -967,10 +966,22 @@ class CommonsPage:
             gbif_id = gbif_links[0]["url"].split("/")[-1]
             source_tag += "\n{{gbif|%s}}" % gbif_id
 
-        for template in code.ifilter_templates(
-            matches=lambda t: t.name.strip().lower() == "information"
-        ):
-            code.insert_after(template, source_tag)
+        if not source_tag:
+            return
+
+        try:
+            # Place templates at the bottom of =={{int:filedesc}}==,
+            # after any other templates but before categories/other text
+            prev = code.get_sections(matches="filedesc")[0].filter_templates(
+                recursive=False
+            )[-1]
+        except IndexError:
+            # If there is no Summary section, just place after {{iNaturalistreview}}
+            prev = code.filter_templates(
+                matches=lambda t: t.name.strip().lower() == "inaturalistreview"
+            )[0]
+
+        code.insert_after(prev, source_tag)
 
     def save_page(self, new_text: str) -> None:
         """Replaces the wikitext of the specified page with new_text

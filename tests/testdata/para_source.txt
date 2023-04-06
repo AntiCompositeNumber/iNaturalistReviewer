@@ -1,0 +1,14 @@
+=={{int:filedesc}}==
+{{Information
+|description={{en|1=Description}}
+|date=1970-01-01
+|source=https://www.inaturalist.org/observations/15059501
+|author=Author
+|permission={{cc-by-sa-4.0}}{{iNaturalistReview}}
+|other versions=
+}}
+{{iNaturalist|15059501}}
+{{gbif|1890092510}}
+
+
+[[Category:Catgory]]
