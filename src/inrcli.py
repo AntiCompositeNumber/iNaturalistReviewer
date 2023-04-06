@@ -81,6 +81,18 @@ class ManualCommonsPage(inrbot.CommonsPage):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    def check_can_run(self) -> bool:
+        """Determinies if the bot should run on this page and returns a bool."""
+        page = self.page
+        if (
+            (page.title() in inrbot.skip)
+            or (not page.has_permission("edit"))
+            or (not page.botMayEdit())
+        ):
+            return False
+        else:
+            return True
+
     def get_old_archive_(self):
         return super().get_old_archive()
 
@@ -209,7 +221,8 @@ def main(target, url="", simulate=False, reverse=False):
             if dtt in set(page.itertemplates()):
                 continue
             try:
-                ManualCommonsPage(pywikibot.FilePage(page)).review_file()
+                mcp = ManualCommonsPage(pywikibot.FilePage(page))
+                mcp.review_file()
             except SkipFile:
                 continue
     elif target == "errors":
