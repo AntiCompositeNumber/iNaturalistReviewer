@@ -28,6 +28,7 @@ import pywikibot  # type: ignore
 import sys
 import os
 import acnutils
+import mwparserfromhell as mwph
 
 _work_dir_ = os.path.dirname(__file__)
 sys.path.append(os.path.realpath(_work_dir_ + "/../src"))
@@ -883,6 +884,7 @@ def test_no_del(status, templates, expected):
 )
 def test_update_review(filename, kwargs, compare):
     page = mock.Mock()
+    page.itertemplates = mock.Mock(return_value=[])
     with open(filename) as f:
         page.text = f.read()
     cpage = inrbot.CommonsPage(page)
@@ -927,6 +929,37 @@ def test_update_review_broken():
     for key, value in kwargs.items():
         setattr(cpage, key, value)
     assert cpage.update_review() is False
+
+
+@pytest.mark.parametrize(
+    "input_file,output_file",
+    [
+        (test_data_dir + "/section.txt", test_data_dir + "/section_source.txt"),
+        (
+            test_data_dir + "/section_badcat.txt",
+            test_data_dir + "/section_badcat_source.txt",
+        ),
+        (test_data_dir + "/para.txt", test_data_dir + "/para_source.txt"),
+        (test_data_dir + "/free.txt", test_data_dir + "/free_source.txt"),
+    ],
+)
+def test_add_source_tag(input_file, output_file):
+    page = mock.Mock()
+    with open(input_file) as f:
+        page.text = f.read()
+    cpage = inrbot.CommonsPage(page)
+    cpage.obs_id = id_tuple(id="15059501", type="observations")
+    with open(test_data_dir + "/ina_response.json") as f:
+        cpage._ina_data = json.load(f)
+
+    page.itertemplates.return_value = []
+
+    code = mwph.parse(page.text)
+    cpage.add_source_tag(code)
+    with open(output_file) as f:
+        expected = f.read()
+
+    assert str(code) == expected
 
 
 @pytest.mark.parametrize(
