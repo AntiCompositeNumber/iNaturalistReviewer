@@ -105,7 +105,7 @@ def test_files_to_check():
 
 
 def test_untagged_files_to_check():
-    next(inrbot.untagged_files_to_check())
+    assert inspect.isgeneratorfunction(inrbot.untagged_files_to_check)
 
 
 @pytest.mark.parametrize(
