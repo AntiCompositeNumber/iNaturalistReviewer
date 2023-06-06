@@ -24,6 +24,7 @@ import logging
 import os
 import sys
 import difflib
+import webbrowser
 from typing import Sequence, Dict, Optional
 
 os.environ["LOG_FILE"] = "stderr"
@@ -36,6 +37,7 @@ inrbot.summary_tag = f"(inrcli {inrbot.__version__})"
 site = inrbot.site
 logger = logging.getLogger("manual")
 ids: Dict[pywikibot.Page, Optional[inrbot.iNaturalistID]] = {}
+auto_open = False
 
 inrbot.config.update(
     {
@@ -159,6 +161,13 @@ class ManualCommonsPage(inrbot.CommonsPage):
             print(f"Observation ID found: {str(observations[0])}")
         if photos:
             print(f"Photo ID found: {str(photos[0])}")
+        if auto_open:
+            webbrowser.open(self.page.full_url())
+            if observations and not photos:
+                webbrowser.open(str(observations[0]))
+            elif photos:
+                webbrowser.open(str(photos[0]))
+
         res = click.prompt(
             "Is this ID correct? [Y/n/r/s/q]",
             default="Y",
@@ -210,8 +219,11 @@ inrbot.pre_save_hooks.append(ManualCommonsPage.pre_save)
 @click.option("--url")
 @click.option("--simulate/--no-simulate")
 @click.option("--reverse", is_flag=True, default=False)
-def main(target, url="", simulate=False, reverse=False):
+@click.option("-o", "--auto-open", "auto_open_", is_flag=True, default=False)
+def main(target, url="", simulate=False, reverse=False, auto_open_=False):
     inrbot.simulate = simulate
+    global auto_open
+    auto_open = auto_open_
     if target == "auto":
         cat = pywikibot.Category(
             site, "Category:iNaturalist images needing human review"
