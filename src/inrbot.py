@@ -1087,7 +1087,7 @@ class CommonsPage:
         """
         log_page = pywikibot.Page(site, config["untagged_log_page"])
         new_text, changes = re.subn(
-            r"^.*?{0}.*\n?".format(re.escape(self.page.title())),
+            r"^.*?{0}.*\n?".format(re.escape(str(self.page.title()))),
             "",
             log_page.text,
             flags=re.MULTILINE,
