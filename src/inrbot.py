@@ -44,7 +44,7 @@ from typing import Any, Iterator
 
 import acnutils
 
-__version__ = "2.4.3"
+__version__ = "2.4.4"
 
 logger = acnutils.getInitLogger("inrbot", level="VERBOSE", filename="inrbot.log")
 
@@ -1087,7 +1087,7 @@ class CommonsPage:
         """
         log_page = pywikibot.Page(site, config["untagged_log_page"])
         new_text, changes = re.subn(
-            r"^.*?{0}.*\n?".format(self.page.title()),
+            r"^.*?{0}.*\n?".format(re.escape(self.page.title())),
             "",
             log_page.text,
             flags=re.MULTILINE,
