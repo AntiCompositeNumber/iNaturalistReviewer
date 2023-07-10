@@ -15,7 +15,7 @@ mwparserfromhell = "*"
 Pillow = "*"
 waybackpy = "^3.0.6"
 ImageHash = "*"
-click = "*"
+click = "!=8.1.4"  # https://github.com/pallets/click/issues/2558
 acnutils = {extras = ["db"], version = "^0.6.2"}
 
 [tool.poetry.dev-dependencies]
