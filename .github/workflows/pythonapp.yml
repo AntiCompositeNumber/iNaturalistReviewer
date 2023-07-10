@@ -14,13 +14,13 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python 3.9
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
     - name: Set up Poetry
       uses: snok/install-poetry@v1
     - name: Install dependencies
-      run: poetry install --no-interaction
+      run: poetry install --no-interaction --no-root
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
@@ -32,7 +32,7 @@ jobs:
         poetry run black . --check --diff
     - name: Static type check with mypy
       run :
-        poetry run mypy inaturalistreviewer
+        poetry run mypy src
     - name: Load pywikibot config
       env:
         USER_CONFIG_PY: ${{ secrets.user_config_py }}
