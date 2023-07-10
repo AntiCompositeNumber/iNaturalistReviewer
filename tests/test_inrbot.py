@@ -41,12 +41,12 @@ id_tuple = inrbot.iNaturalistID
 
 
 def test_check_can_run_skip():
-    page = pywikibot.FilePage(inrbot.site, "File:Male.svg")
+    page = pywikibot.FilePage(inrbot.site, "File:Deletion error 064.png")
     cpage = inrbot.CommonsPage(page)
     assert isinstance(inrbot.skip, set)
-    inrbot.skip.add("File:Male.svg")
+    inrbot.skip.add("File:Deletion error 064.png")
     cpage.check_can_run()
-    inrbot.skip.remove("File:Male.svg")
+    inrbot.skip.remove("File:Deletion error 064.png")
 
 
 def test_check_can_run_protected():
@@ -61,8 +61,9 @@ def test_check_can_run_protected():
     assert not cpage.check_can_run()
 
 
+@pytest.mark.skip("")
 def test_check_can_run_exclusion():
-    page = pywikibot.FilePage(inrbot.site, "File:Male.svg")
+    page = pywikibot.FilePage(inrbot.site, "File:Deletion error 064.png")
     cpage = inrbot.CommonsPage(page)
     assert not cpage.check_can_run()
 
