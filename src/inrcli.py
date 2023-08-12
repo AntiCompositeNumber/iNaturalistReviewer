@@ -42,14 +42,15 @@ auto_open = False
 inrbot.config.update(
     {
         "fail_tag": "{{copyvio|License review not passed: "
-        "iNaturalist author is using $review_license}}\n",
+        "iNaturalist author is using $review_license: $source_url}}\n",
         "fail_warn": "\n\n{{subst:Copyvionote |1=$filename "
         "|2=License review "
-        "not passed: iNaturalist author is using $review_license }} ~~~~",
+        "not passed: iNaturalist author is using $review_license: $source_url }} ~~~~",
         "review_summary": "Semi-automatic license review: "
         "$status $review_license $tag",
         "old_fail_warn": "\n\n{{subst:image permission|1=$filename}} "
-        "License review not passed: iNaturalist author is using $review_license. ~~~~",
+        "License review not passed: iNaturalist author is "
+        "using $review_license: $source_url. ~~~~",
         "use_wayback": False,
     }
 )
