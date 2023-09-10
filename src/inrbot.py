@@ -257,6 +257,8 @@ class iNaturalistImage(Image):
 class CommonsImage(Image):
     def __init__(self, page: pywikibot.FilePage, **kwargs):
         self.page = page
+        if self.page:
+            self.page.get(force=True)
         super().__init__(**kwargs)
 
     @property
