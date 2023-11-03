@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: bot
-          image: docker-registry.tools.wmflabs.org/toolforge-python39-sssd-base:latest
+          image: docker-registry.tools.wmflabs.org/toolforge-python311-sssd-base:latest
           command: [
             "/data/project/inaturalistreviewer/iNaturalistReviewer/venv/bin/python3",
             "/data/project/inaturalistreviewer/iNaturalistReviewer/src/inrbot.py",
