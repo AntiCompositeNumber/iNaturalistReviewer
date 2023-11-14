@@ -1167,7 +1167,7 @@ class CommonsPage:
         except StopReview as err:
             logger.info(f"Image already reviewed, contains {err.reason}")
             self.status = "stop"
-        except (acnutils.RunpageError, KeyboardInterrupt) as err:
+        except (acnutils.RunpageError, KeyboardInterrupt, ConnectionError) as err:
             raise err
         except Exception as err:
             logger.exception(err)
@@ -1227,7 +1227,7 @@ def main(
                 try:
                     check_config()
                     cpage.review_file()
-                except (acnutils.RunpageError, RestartBot) as err:
+                except (acnutils.RunpageError, RestartBot, ConnectionError) as err:
                     # Blocks and runpage checks always stop
                     logger.exception(err)
                     raise
