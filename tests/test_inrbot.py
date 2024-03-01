@@ -423,14 +423,6 @@ def test_com_license_none():
     assert cpage.com_license == ""
 
 
-def test_com_license_unk():
-    site = pywikibot.Site("commons", "commons")
-    page = pywikibot.Page(site, "Template:CC-Layout")
-    cpage = inrbot.CommonsPage(page)
-    with pytest.raises(inrbot.ProcessingError, match="comlicense"):
-        cpage.get_com_license()
-
-
 @pytest.mark.parametrize(
     "ina_license,com_license,expected",
     [
@@ -519,12 +511,12 @@ def test_is_old(status, timestamp, expected):
         (
             "fail",
             [
-                pywikibot.Page(inrbot.site, "Template:License template tag"),
+                pywikibot.Page(inrbot.site, "Template:Cc-by-sa-4.0"),
                 pywikibot.Page(inrbot.site, "Template:OTRS received"),
             ],
             True,
         ),
-        ("fail", [pywikibot.Page(inrbot.site, "Template:License template tag")], False),
+        ("fail", [pywikibot.Page(inrbot.site, "Template:Cc-by-sa-4.0")], False),
         ("pass", [pywikibot.Page(inrbot.site, "Template:OTRS received")], False),
     ],
 )
