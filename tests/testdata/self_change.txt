@@ -9,6 +9,6 @@
 }}
 
 =={{int:license-header}}==
-{{self|cc by 4.0}}{{iNaturalistReview}}
+{{self|cc by 4.0}}{{iNaturalistreview}}
 
 [[Category:Category]]

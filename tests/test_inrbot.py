@@ -549,7 +549,7 @@ def test_no_del(status, templates, expected):
                 reason="sha1",
             ),
             (
-                "{{cc-by-sa-4.0}}{{iNaturalistReview |status=pass |author=Author "
+                "{{cc-by-sa-4.0}}{{iNaturalistreview |status=pass |author=Author "
                 "|sourceurl=https://www.inaturalist.org/photos/11505950 "
                 "|archive=archive(https://www.inaturalist.org/photos/11505950) "
                 f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
@@ -566,7 +566,7 @@ def test_no_del(status, templates, expected):
                 reason="sha1",
             ),
             (
-                "{{cc-by-sa-4.0}}{{iNaturalistReview |status=fail |author=Author "
+                "{{cc-by-sa-4.0}}{{iNaturalistreview |status=fail |author=Author "
                 "|sourceurl=https://www.inaturalist.org/photos/11505950 "
                 f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
                 " |reviewlicense=Cc-by-nd-4.0 |reason=sha1}}"
@@ -583,7 +583,7 @@ def test_no_del(status, templates, expected):
                 is_old=True,
             ),
             (
-                "{{cc-by-sa-4.0}}{{iNaturalistReview |status=fail |author=Author "
+                "{{cc-by-sa-4.0}}{{iNaturalistreview |status=fail |author=Author "
                 "|sourceurl=https://www.inaturalist.org/photos/11505950 "
                 f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
                 " |reviewlicense=Cc-by-nd-4.0 |reason=sha1}}"
@@ -593,7 +593,7 @@ def test_no_del(status, templates, expected):
             test_data_dir + "/section.txt",
             dict(status="error", reason="nodata", photo_id=None),
             (
-                "{{cc-by-sa-4.0}}{{iNaturalistReview |status=error "
+                "{{cc-by-sa-4.0}}{{iNaturalistreview |status=error "
                 f"|reviewdate={date.today().isoformat()} "
                 "|reviewer=iNaturalistReviewBot |reason=nodata}}"
             ),
@@ -608,7 +608,7 @@ def test_no_del(status, templates, expected):
                 reason="sha1",
             ),
             (
-                "{{cc-by-sa-4.0}}\n{{iNaturalistReview |status=pass |author=Author "
+                "{{cc-by-sa-4.0}}\n{{iNaturalistreview |status=pass |author=Author "
                 "|sourceurl=https://www.inaturalist.org/photos/11505950 "
                 "|archive=archive(https://www.inaturalist.org/photos/11505950) "
                 f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
@@ -625,7 +625,7 @@ def test_no_del(status, templates, expected):
                 reason="sha1",
             ),
             (
-                "{{cc-by-sa-4.0}}\n{{iNaturalistReview |status=pass |author=Author "
+                "{{cc-by-sa-4.0}}\n{{iNaturalistreview |status=pass |author=Author "
                 "|sourceurl=https://www.inaturalist.org/photos/11505950 "
                 "|archive=archive(https://www.inaturalist.org/photos/11505950) "
                 f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
@@ -642,7 +642,7 @@ def test_no_del(status, templates, expected):
                 reason="sha1",
             ),
             (
-                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass-change "
+                "{{Cc-by-sa-4.0}}{{iNaturalistreview |status=pass-change "
                 "|author=Author |sourceurl=https://www.inaturalist.org/photos/11505950 "
                 "|archive=archive(https://www.inaturalist.org/photos/11505950) "
                 f"|reviewdate={date.today().isoformat()} "
@@ -660,7 +660,7 @@ def test_no_del(status, templates, expected):
                 reason="sha1",
             ),
             (
-                "{{Cc-by-sa-4.0}}\n{{iNaturalistReview |status=pass-change "
+                "{{Cc-by-sa-4.0}}\n{{iNaturalistreview |status=pass-change "
                 "|author=Author |sourceurl=https://www.inaturalist.org/photos/11505950 "
                 "|archive=archive(https://www.inaturalist.org/photos/11505950) "
                 f"|reviewdate={date.today().isoformat()} "
@@ -678,7 +678,7 @@ def test_no_del(status, templates, expected):
                 reason="sha1",
             ),
             (
-                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass-change "
+                "{{Cc-by-sa-4.0}}{{iNaturalistreview |status=pass-change "
                 "|author=Author |sourceurl=https://www.inaturalist.org/photos/11505950 "
                 "|archive=archive(https://www.inaturalist.org/photos/11505950) "
                 f"|reviewdate={date.today().isoformat()} "
@@ -696,7 +696,7 @@ def test_no_del(status, templates, expected):
                 reason="sha1",
             ),
             (
-                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass-change "
+                "{{Cc-by-sa-4.0}}{{iNaturalistreview |status=pass-change "
                 "|author=Author |sourceurl=https://www.inaturalist.org/photos/11505950 "
                 "|archive=archive(https://www.inaturalist.org/photos/11505950) "
                 f"|reviewdate={date.today().isoformat()} "
@@ -714,7 +714,7 @@ def test_no_del(status, templates, expected):
                 reason="sha1",
             ),
             (
-                "{{cc-by-sa-4.0}}{{iNaturalistReview |status=pass |author=Author "
+                "{{cc-by-sa-4.0}}{{iNaturalistreview |status=pass |author=Author "
                 "|sourceurl=https://www.inaturalist.org/photos/11505950 "
                 "|archive=archive(https://www.inaturalist.org/photos/11505950) "
                 f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
@@ -731,7 +731,7 @@ def test_no_del(status, templates, expected):
                 reason="sha1",
             ),
             (
-                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass-change "
+                "{{Cc-by-sa-4.0}}{{iNaturalistreview |status=pass-change "
                 "|author=Author "
                 "|sourceurl=https://www.inaturalist.org/photos/11505950 "
                 "|archive=archive(https://www.inaturalist.org/photos/11505950) "
@@ -750,7 +750,7 @@ def test_no_del(status, templates, expected):
                 reason="sha1",
             ),
             (
-                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass-change "
+                "{{Cc-by-sa-4.0}}{{iNaturalistreview |status=pass-change "
                 "|author=Author "
                 "|sourceurl=https://www.inaturalist.org/photos/11505950 "
                 "|archive=archive(https://www.inaturalist.org/photos/11505950) "
@@ -769,7 +769,7 @@ def test_no_del(status, templates, expected):
                 reason="sha1",
             ),
             (
-                "{{cc-by-sa-4.0}}\n{{iNaturalistReview |status=pass |author=Author "
+                "{{cc-by-sa-4.0}}\n{{iNaturalistreview |status=pass |author=Author "
                 "|sourceurl=https://www.inaturalist.org/photos/11505950 "
                 "|archive=archive(https://www.inaturalist.org/photos/11505950) "
                 f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
@@ -786,7 +786,7 @@ def test_no_del(status, templates, expected):
                 reason="sha1",
             ),
             (
-                "{{Cc-by-sa-4.0}}\n{{iNaturalistReview |status=pass-change "
+                "{{Cc-by-sa-4.0}}\n{{iNaturalistreview |status=pass-change "
                 "|author=Author |sourceurl=https://www.inaturalist.org/photos/11505950 "
                 "|archive=archive(https://www.inaturalist.org/photos/11505950) "
                 f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
@@ -803,7 +803,7 @@ def test_no_del(status, templates, expected):
                 reason="sha1",
             ),
             (
-                "{{self|cc-by-sa-4.0}}{{iNaturalistReview |status=pass "
+                "{{self|cc-by-sa-4.0}}{{iNaturalistreview |status=pass "
                 "|author=Author |sourceurl=https://www.inaturalist.org/photos/11505950 "
                 "|archive=archive(https://www.inaturalist.org/photos/11505950) "
                 f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
@@ -820,7 +820,7 @@ def test_no_del(status, templates, expected):
                 reason="sha1",
             ),
             (
-                "{{self|cc-by-sa-4.0}}\n{{iNaturalistReview |status=pass "
+                "{{self|cc-by-sa-4.0}}\n{{iNaturalistreview |status=pass "
                 "|author=Author |sourceurl=https://www.inaturalist.org/photos/11505950 "
                 "|archive=archive(https://www.inaturalist.org/photos/11505950) "
                 f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
@@ -837,7 +837,7 @@ def test_no_del(status, templates, expected):
                 reason="sha1",
             ),
             (
-                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass-change "
+                "{{Cc-by-sa-4.0}}{{iNaturalistreview |status=pass-change "
                 "|author=Author |sourceurl=https://www.inaturalist.org/photos/11505950 "
                 "|archive=archive(https://www.inaturalist.org/photos/11505950) "
                 f"|reviewdate={date.today().isoformat()} "
@@ -855,7 +855,7 @@ def test_no_del(status, templates, expected):
                 reason="sha1",
             ),
             (
-                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass-change "
+                "{{Cc-by-sa-4.0}}{{iNaturalistreview |status=pass-change "
                 "|author=Author |sourceurl=https://www.inaturalist.org/photos/11505950 "
                 "|archive=archive(https://www.inaturalist.org/photos/11505950) "
                 f"|reviewdate={date.today().isoformat()} "
@@ -873,7 +873,7 @@ def test_no_del(status, templates, expected):
                 reason="sha1",
             ),
             (
-                "{{Cc-by-sa-4.0}}{{iNaturalistReview |status=pass-change "
+                "{{Cc-by-sa-4.0}}{{iNaturalistreview |status=pass-change "
                 "|author=Author |sourceurl=https://www.inaturalist.org/photos/11505950 "
                 "|archive=archive(https://www.inaturalist.org/photos/11505950) "
                 f"|reviewdate={date.today().isoformat()} "
@@ -975,7 +975,7 @@ def test_add_source_tag(input_file, output_file):
                 reason="sha1",
             ),
             (
-                "{{iNaturalistReview |status=pass |author=Author "
+                "{{iNaturalistreview |status=pass |author=Author "
                 "|sourceurl=https://www.inaturalist.org/photos/11505950 "
                 "|archive=archive(https://www.inaturalist.org/photos/11505950) "
                 f"|reviewdate={date.today().isoformat()} "
@@ -992,7 +992,7 @@ def test_add_source_tag(input_file, output_file):
                 reason="sha1",
             ),
             (
-                "{{iNaturalistReview |status=pass-change |author=Author "
+                "{{iNaturalistreview |status=pass-change |author=Author "
                 "|sourceurl=https://www.inaturalist.org/photos/11505950 "
                 "|archive=archive(https://www.inaturalist.org/photos/11505950) "
                 f"|reviewdate={date.today().isoformat()} "

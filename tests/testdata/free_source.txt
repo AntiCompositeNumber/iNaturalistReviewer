@@ -4,7 +4,7 @@ Source: https://www.inaturalist.org/observations/15059501
 Author: Author
 
 {{cc-by-sa-4.0}}
-{{iNaturalistReview}}
+{{iNaturalistreview}}
 {{iNaturalist|15059501}}
 {{gbif|1890092510}}
 

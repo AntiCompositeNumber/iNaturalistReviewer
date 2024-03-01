@@ -9,6 +9,6 @@
 }}
 
 =={{int:license-header}}==
-{{Tasnim}}{{iNaturalistReview}}
+{{Tasnim}}{{iNaturalistreview}}
 
 [[Category:Catgory]]

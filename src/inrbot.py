@@ -933,7 +933,7 @@ class CommonsPage:
             return True
 
     def make_template(self) -> str:
-        """Constructs the iNaturalistReview template"""
+        """Constructs the iNaturalistreview template"""
         self.lock()
         if self.status == "stop":
             return ""

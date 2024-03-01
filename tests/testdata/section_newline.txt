@@ -10,6 +10,6 @@
 
 =={{int:license-header}}==
 {{cc-by-sa-4.0}}
-{{iNaturalistReview}}
+{{iNaturalistreview}}
 
 [[Category:Catgory]]

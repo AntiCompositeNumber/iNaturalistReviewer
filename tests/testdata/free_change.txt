@@ -4,6 +4,6 @@ Source: https://www.inaturalist.org/observations/15059501
 Author: Author
 
 {{cc-by-4.0}}
-{{iNaturalistReview}}
+{{iNaturalistreview}}
 
 [[Category:Catgory]]
