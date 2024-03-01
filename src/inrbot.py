@@ -141,16 +141,22 @@ def files_to_check(start: Optional[str] = None) -> Iterator[pywikibot.page.BaseP
 
 def untagged_files_to_check() -> Iterator[pywikibot.page.BasePage]:
     if not config.get("find_untagged"):
-        yield from []
+        pages = []
+    else:
+        try:
+            res = session.get(
+                config["petscan_url"], params=config["untagged_petscan_query"]
+            )
+            res.raise_for_status()
 
-    res = session.get(config["petscan_url"], params=config["untagged_petscan_query"])
-    res.raise_for_status()
+            data = res.json()
+            assert data["n"] == "result"
+            pages = data["*"][0]["a"]["*"]
+        except Exception:
+            pages = []
+        logger.info(f'Found {len(data["*"][0]["a"]["*"])} untagged files to check')
 
-    data = res.json()
-    assert data["n"] == "result"
-    logger.info(f'Found {len(data["*"][0]["a"]["*"])} untagged files to check')
-
-    for page_data in data["*"][0]["a"]["*"]:
+    for page_data in pages:
         yield pywikibot.FilePage(site, title=page_data["title"])
 
 
