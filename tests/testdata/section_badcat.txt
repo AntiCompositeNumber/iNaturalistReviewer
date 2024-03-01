@@ -12,5 +12,5 @@
 [[Category:Catgory]]
 
 =={{int:license-header}}==
-{{cc-by-sa-4.0}}{{iNaturalistReview}}
+{{cc-by-sa-4.0}}{{iNaturalistreview}}
 

@@ -9,6 +9,6 @@
 }}
 
 =={{int:license-header}}==
-{{iNaturalistReview}}
+{{iNaturalistreview}}
 
 [[Category:Catgory]]

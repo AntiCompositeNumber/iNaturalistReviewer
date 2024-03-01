@@ -11,6 +11,6 @@
 {{gbif|1890092510}}
 
 =={{int:license-header}}==
-{{cc-by-sa-4.0}}{{iNaturalistReview}}
+{{cc-by-sa-4.0}}{{iNaturalistreview}}
 
 [[Category:Catgory]]
