@@ -706,15 +706,10 @@ class CommonsPage:
         templates = set(self.page.itertemplates())
         license_tags = set(category.members(namespaces=10))
 
-        if pywikibot.Page(site, "Template:License template tag") in templates:
-            for template in templates:
-                if template in license_tags:
-                    self._com_license = template.title(with_ns=False)
-                    break
-            else:
-                raise ProcessingError(
-                    "comlicense", "Could not determine Commons license"
-                )
+        for template in templates:
+            if template in license_tags:
+                self._com_license = template.title(with_ns=False)
+                break
         else:
             logger.info("No Commons license found!")
             self._com_license = ""
