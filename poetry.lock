@@ -2,21 +2,21 @@
 
 [[package]]
 name = "acnutils"
-version = "0.6.2"
+version = "0.6.3"
 description = "Various utilities used in AntiCompositeNumber's bots"
 optional = false
-python-versions = ">=3.7,<4.0"
+python-versions = "<4.0,>=3.9"
 files = [
-    {file = "acnutils-0.6.2-py3-none-any.whl", hash = "sha256:4cf6201b2aa4f8f3553b29875734d9111fb5b2580e3739743a5b79f6a324d4b0"},
-    {file = "acnutils-0.6.2.tar.gz", hash = "sha256:8bce4031efac63d79febedc653a4417e207d66a45d4b8bf83433b5cd899aa495"},
+    {file = "acnutils-0.6.3-py3-none-any.whl", hash = "sha256:c5e4a043e659e153389b2f630b5b659bd3af8d6625a8697bc63829b9ed9d7e07"},
+    {file = "acnutils-0.6.3.tar.gz", hash = "sha256:d02f77346d7ee4b910fe5ee805289884d4ba9e454f685b5c2514c33b7b8383d4"},
 ]
 
 [package.dependencies]
-pywikibot = ">=6.6.1,<8.0.0"
-toolforge = {version = ">=5.0.0,<6.0.0", optional = true, markers = "extra == \"db\""}
+pywikibot = ">=6.6.1,<10.0.0"
+toolforge = {version = ">=5,<7", optional = true, markers = "extra == \"db\""}
 
 [package.extras]
-db = ["toolforge (>=5.0.0,<6.0.0)"]
+db = ["toolforge (>=5,<7)"]
 
 [[package]]
 name = "black"
@@ -950,4 +950,4 @@ dev = ["black", "codecov", "flake8", "mypy", "pytest", "pytest-cov", "setuptools
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.11"
-content-hash = "758ea57537f4748acbb8b0bf4a44407b6d0c2fc803c438623776bf0b8ea178e9"
+content-hash = "192b5f8ab1e72007657d5c9e3a082cb1fa65fca1bd77a8a44342f23af6c6cc42"
