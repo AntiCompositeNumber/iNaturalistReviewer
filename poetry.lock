@@ -749,39 +749,37 @@ numpy = ">=1.22.4,<3"
 
 [[package]]
 name = "pywikibot"
-version = "7.7.3"
+version = "9.1.1"
 description = "Python MediaWiki Bot Framework"
 optional = false
-python-versions = ">=3.5.3"
+python-versions = ">=3.7.0"
 files = [
-    {file = "pywikibot-7.7.3-py3-none-any.whl", hash = "sha256:0787458bcb2f86bf21f7e900b4148a61316540dca31b0fa0b04250d8197a0344"},
-    {file = "pywikibot-7.7.3.tar.gz", hash = "sha256:071b8883c2396c061f210b2369dc1e8cfe2a5dad14fb10a20639df30d729fb5c"},
+    {file = "pywikibot-9.1.1-py3-none-any.whl", hash = "sha256:6345ff458378aedd0c072cd021a0882b8f781d110c426ee6503aff54f5b8fb2a"},
+    {file = "pywikibot-9.1.1.tar.gz", hash = "sha256:0d8d4585c8d6243085267556060d00a30b980665fa45a6254e86e4b3e458c7cf"},
 ]
 
 [package.dependencies]
-requests = {version = ">=2.20.1", markers = "python_version >= \"3.7\""}
-setuptools = {version = ">=48.0.0", markers = "python_version >= \"3.10\""}
+mwparserfromhell = ">=0.5.2"
+packaging = "*"
+requests = ">=2.21.0"
 
 [package.extras]
-commons-information-py = ["mwparserfromhell (>=0.5.0)"]
 create-isbn-edition-py = ["isbnlib", "unidecode"]
 eventstreams = ["sseclient (>=0.0.18,<0.0.23)"]
-flake8 = ["darglint", "flake8 (==3.9.2)", "flake8 (>=5.0.2)", "flake8-bugbear (!=21.4.1,!=21.11.28)", "flake8-coding", "flake8-comprehensions (>=2.2.0)", "flake8-comprehensions (>=3.1.4)", "flake8-docstrings (>=1.3.1)", "flake8-no-u-prefixed-strings (>=0.2)", "flake8-print (>=2.0.1)", "flake8-quotes (>=3.3.0)", "flake8-string-format", "flake8-tuple (>=0.2.8)", "pep8-naming (>=0.12.1)", "pep8-naming (>=0.12.1,<0.13.0)", "pydocstyle (>=4.0.0)", "verve-flake8-mock (>=0.4)"]
+flake8 = ["darglint2", "flake8 (>=5.0.4)", "flake8-bugbear (!=24.1.17)", "flake8-comprehensions (>=3.13.0)", "flake8-docstrings (>=1.4.0)", "flake8-future-annotations", "flake8-mock-x2", "flake8-no-u-prefixed-strings (>=0.2)", "flake8-print (>=5.0.0)", "flake8-quotes (>=3.3.2)", "flake8-raise", "flake8-string-format", "flake8-tuple (>=0.4.1)", "pep8-naming (>=0.13.3)", "pydocstyle (>=6.3.0)"]
 google = ["google (>=1.7)"]
-graphviz = ["pydot (>=1.2)"]
+graphviz = ["pydot (>=1.4.1)"]
 hacking = ["hacking", "importlib-metadata (<5.0.0)"]
-html = ["BeautifulSoup4"]
-http = ["fake-useragent (<0.1.14)", "fake-useragent (>1.0.1)"]
-isbn = ["python-stdnum (>=1.17)"]
+html = ["beautifulsoup4 (>=4.7.1)"]
+http = ["fake-useragent (>=1.4.0)"]
+isbn = ["python-stdnum (>=1.19)"]
 memento = ["memento-client (==0.6.1)"]
 mwoauth = ["mwoauth (>=0.2.4,!=0.3.1)"]
-mwparserfromhell = ["mwparserfromhell (>=0.5.0)"]
-mysql = ["PyMySQL (>=0.7.11,<1.0.0)", "PyMySQL (>=1.0.0)"]
-patrol-py = ["mwparserfromhell (>=0.5.0)"]
-scripts = ["isbnlib", "memento-client (==0.6.1)", "mwparserfromhell (>=0.5.0)", "unidecode"]
-tkinter = ["Pillow (>=8.1.1)"]
+mysql = ["PyMySQL (>=1.0.0)"]
+scripts = ["isbnlib", "memento-client (==0.6.1)", "unidecode"]
+tkinter = ["Pillow (>=8.1.2,!=10.0,!=10.1)"]
 weblinkchecker-py = ["memento-client (==0.6.1)"]
-wikitextparser = ["wikitextparser (>=0.47.0)", "wikitextparser (>=0.47.5)"]
+wikitextparser = ["wikitextparser (>=0.47.0)"]
 
 [[package]]
 name = "requests"
@@ -865,22 +863,6 @@ doc = ["jupyterlite-pyodide-kernel", "jupyterlite-sphinx (>=0.12.0)", "jupytext"
 test = ["array-api-strict", "asv", "gmpy2", "hypothesis (>=6.30)", "mpmath", "pooch", "pytest", "pytest-cov", "pytest-timeout", "pytest-xdist", "scikit-umfpack", "threadpoolctl"]
 
 [[package]]
-name = "setuptools"
-version = "69.5.1"
-description = "Easily download, build, install, upgrade, and uninstall Python packages"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "setuptools-69.5.1-py3-none-any.whl", hash = "sha256:c636ac361bc47580504644275c9ad802c50415c7522212252c033bd15f301f32"},
-    {file = "setuptools-69.5.1.tar.gz", hash = "sha256:6c1fccdac05a97e598fb0ae3bbed5904ccb317337a51139dcd51453611bbb987"},
-]
-
-[package.extras]
-docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "pygments-github-lexers (==0.0.5)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-favicon", "sphinx-inline-tabs", "sphinx-lint", "sphinx-notfound-page (>=1,<2)", "sphinx-reredirects", "sphinxcontrib-towncrier"]
-testing = ["build[virtualenv]", "filelock (>=3.4.0)", "importlib-metadata", "ini2toml[lite] (>=0.9)", "jaraco.develop (>=7.21)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "mypy (==1.9)", "packaging (>=23.2)", "pip (>=19.1)", "pytest (>=6,!=8.1.1)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-home (>=0.5)", "pytest-mypy", "pytest-perf", "pytest-ruff (>=0.2.1)", "pytest-timeout", "pytest-xdist (>=3)", "tomli", "tomli-w (>=1.0.0)", "virtualenv (>=13.0.0)", "wheel"]
-testing-integration = ["build[virtualenv] (>=1.0.3)", "filelock (>=3.4.0)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "packaging (>=23.2)", "pytest", "pytest-enabler", "pytest-xdist", "tomli", "virtualenv (>=13.0.0)", "wheel"]
-
-[[package]]
 name = "toolforge"
 version = "6.0.0"
 description = "Small library for common tasks on Wikimedia Toolforge"
@@ -959,4 +941,4 @@ dev = ["black", "codecov", "flake8", "mypy", "pytest", "pytest-cov", "setuptools
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.11"
-content-hash = "758ea57537f4748acbb8b0bf4a44407b6d0c2fc803c438623776bf0b8ea178e9"
+content-hash = "08c65812b3b76d39a136c11740358ea96ec44e0540270be9299519ab63f3be95"
