@@ -261,22 +261,22 @@ toml = ["tomli"]
 
 [[package]]
 name = "coveralls"
-version = "3.3.1"
+version = "4.0.1"
 description = "Show coverage stats online via coveralls.io"
 optional = false
-python-versions = ">= 3.5"
+python-versions = "<3.13,>=3.8"
 files = [
-    {file = "coveralls-3.3.1-py2.py3-none-any.whl", hash = "sha256:f42015f31d386b351d4226389b387ae173207058832fbf5c8ec4b40e27b16026"},
-    {file = "coveralls-3.3.1.tar.gz", hash = "sha256:b32a8bb5d2df585207c119d6c01567b81fba690c9c10a753bfe27a335bfc43ea"},
+    {file = "coveralls-4.0.1-py3-none-any.whl", hash = "sha256:7a6b1fa9848332c7b2221afb20f3df90272ac0167060f41b5fe90429b30b1809"},
+    {file = "coveralls-4.0.1.tar.gz", hash = "sha256:7b2a0a2bcef94f295e3cf28dcc55ca40b71c77d1c2446b538e85f0f7bc21aa69"},
 ]
 
 [package.dependencies]
-coverage = ">=4.1,<6.0.dev0 || >6.1,<6.1.1 || >6.1.1,<7.0"
-docopt = ">=0.6.1"
-requests = ">=1.0.0"
+coverage = {version = ">=5.0,<6.0.dev0 || >6.1,<6.1.1 || >6.1.1,<8.0", extras = ["toml"]}
+docopt = ">=0.6.1,<0.7.0"
+requests = ">=1.0.0,<3.0.0"
 
 [package.extras]
-yaml = ["PyYAML (>=3.10)"]
+yaml = ["pyyaml (>=3.10,<7.0)"]
 
 [[package]]
 name = "docopt"
