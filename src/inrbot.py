@@ -103,7 +103,7 @@ def get_config() -> Tuple[dict, datetime.datetime]:
 
 def check_config() -> None:
     page = pywikibot.Page(site, "User:iNaturalistReviewBot/config.json")
-    if conf_ts and page.editTime() > conf_ts:
+    if conf_ts and page.latest_revision.timestamp > conf_ts:
         raise RestartBot("Configuration has been updated, bot will restart")
 
 
