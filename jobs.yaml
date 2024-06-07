@@ -6,7 +6,7 @@
   command: /data/project/inaturalistreviewer/iNaturalistReviewer/upgrade.sh
   wait: true
   emails: none
-- name: inaturalistreviewer.bot
+- name: inrbot
   image: python3.11
   command: /data/project/inaturalistreviewer/iNaturalistReviewer/inrbot.sh
   continuous: true
