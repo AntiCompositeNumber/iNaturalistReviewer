@@ -8,6 +8,10 @@
 # dependencies are installed based on poetry.lock. This script should be called
 # from the root directory of the repository.
 
+set -e
+
+cd /data/project/inaturalistreviewer/iNaturalistReviewer
+
 source venv/bin/activate
 
 pip install --upgrade pip wheel poetry

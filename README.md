@@ -36,43 +36,31 @@ Reviewing previously-reviewed files:
 
 ## Deployment
 This bot runs on Toolforge as `inaturalistreviewer` with the `python3.11` Kubernetes container.
-The k8s configuration is stored in `deployment.yaml` and `job.yaml` and assumes that there is a python 3.11 virtualenv in `/data/project/inaturalistreviewer/iNaturalistReviewer/venv/`.
+It uses the `toolforge jobs` configuration in jobs.yaml and assumes that there is a python 3.11 virtualenv in `/data/project/inaturalistreviewer/iNaturalistReviewer/venv/`.
 
 To stop the bot:
-`kubectl delete deployment inaturalistreviewer.bot`
+`toolforge jobs delete inrbot`
 
 To start the bot in automatic mode:
-`kubectl create -f /data/project/inaturalistreviewer/iNaturalistReviewer/deployment.yaml`
+`toolforge jobs load ~/iNaturalistReviewer/jobs.yaml --job inrbot`
 
 To get the pod status:
-`kubectl get pods`
+`toolforge jobs list`
 
 ### Updating the bot
 With only code changes:
 ```console
-$ git -C /data/project/inaturalistreviewer/iNaturalistReviewer pull
-$ kubectl get pods
-$ kubectl delete pod <pod id>
+$ cd iNaturalistReviewer
+$ git pull
+$ toolforge jobs restart inrbot
 ```
 
 With code changes and/or dependency updates:
 ```console
-$ webservice shell
 $ cd iNaturalistReviewer
 $ git pull
-$ ./upgrade.sh
-$ exit
-$ kubectl get pods
-$ kubectl delete pod <pod id>
+$ toolforge jobs load jobs.yaml
 ```
-
-```console
-$ kubectl delete deployment inaturalistreviewer.bot
-$ git -C /data/project/inaturalistreviewer/iNaturalistReviewer pull
-$ kubectl create -f /data/project/inaturalistreviewer/iNaturalistReviewer/deployment.yaml
-```
-
-TODO: Stick these commands in a bash script
 
 ## Commons intergration
 The bot is controlled by a [runpage on Commons](https://commons.wikimedia.org/wiki/User:INaturalistReviewBot/Run). If the runpage does not end with True, the bot will stop cleanly. Blocking the bot will also stop it from running. Using the runpage is preferred as it is faster and easier for everyone involved.
