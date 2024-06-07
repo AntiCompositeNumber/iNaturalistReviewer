@@ -10,12 +10,14 @@ import itertools
 import json
 import logging
 import logging.config
+import os
 import re
 import string
 import time
 import urllib.parse
 from hmac import compare_digest
 from io import BytesIO
+from pathlib import Path
 
 import imagehash  # type: ignore
 import mwparserfromhell as mwph  # type: ignore
@@ -119,6 +121,7 @@ def init_compare_methods() -> None:
 def files_to_check(start: Optional[str] = None) -> Iterator[pywikibot.page.BasePage]:
     """Iterate list of files needing review from Commons"""
     category = pywikibot.Category(site, "Category:INaturalist review needed")
+    do_heartbeat()
     for page in pagegenerators.CategorizedPageGenerator(
         category, namespaces=6, start=start
     ):
@@ -142,6 +145,7 @@ def untagged_files_to_check() -> Iterator[pywikibot.page.BasePage]:
             pages = []
         logger.info(f'Found {len(data["*"][0]["a"]["*"])} untagged files to check')
 
+    do_heartbeat()
     for page_data in pages:
         yield pywikibot.FilePage(site, title=page_data["title"])
 
@@ -338,6 +342,15 @@ def bytes_throttle(length: int) -> None:
     logger.info(f"Sleeping for {sleep_time} seconds")
     time.sleep(sleep_time)
     return None
+
+
+def do_heartbeat() -> None:
+    """Update the timestamp on a file (if provided)
+
+    Works with inrbot-healthcheck.sh when the HEARTBEAT_FILE environment variable is set
+    """
+    if os.environ.get("HEARTBEAT_FILE"):
+        Path(os.environ["HEARTBEAT_FILE"]).touch()
 
 
 class Aliases:
@@ -1202,6 +1215,7 @@ def main(
             for page in itertools.chain(
                 files_to_check(start), untagged_files_to_check()
             ):
+                do_heartbeat()
                 try:
                     cpage = CommonsPage(pywikibot.FilePage(page))
                 except ValueError:

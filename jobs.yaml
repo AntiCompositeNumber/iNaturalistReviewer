@@ -1,0 +1,15 @@
+# https://wikitech.wikimedia.org/wiki/Help:Toolforge/Jobs_framework
+---
+# continuous job for iNaturalistReview bot task
+- name: build-venv
+  image: python3.11
+  command: /data/project/inaturalistreviewer/iNaturalistReviewer/upgrade.sh
+  wait: true
+  emails: none
+- name: inaturalistreviewer.bot
+  image: python3.11
+  command: /data/project/inaturalistreviewer/iNaturalistReviewer/inrbot.sh
+  continuous: true
+  emails: onfailure
+  health-check-script: /data/project/inaturalistreviewer/iNaturalistReviewer/inrbot-healthcheck.sh
+  no-filelog: true
