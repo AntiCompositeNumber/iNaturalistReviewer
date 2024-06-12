@@ -141,9 +141,10 @@ def untagged_files_to_check() -> Iterator[pywikibot.page.BasePage]:
             data = res.json()
             assert data["n"] == "result"
             pages = data["*"][0]["a"]["*"]
-        except Exception:
+        except Exception as err:
+            logger.exception(err)
             pages = []
-        logger.info(f'Found {len(data["*"][0]["a"]["*"])} untagged files to check')
+        logger.info(f"Found {len(pages)} untagged files to check")
 
     do_heartbeat()
     for page_data in pages:
