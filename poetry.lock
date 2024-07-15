@@ -752,13 +752,13 @@ numpy = ">=1.22.4,<3"
 
 [[package]]
 name = "pywikibot"
-version = "9.1.3"
+version = "9.2.1"
 description = "Python MediaWiki Bot Framework"
 optional = false
 python-versions = ">=3.7.0"
 files = [
-    {file = "pywikibot-9.1.3-py3-none-any.whl", hash = "sha256:7df20698704280d1b44bddb57c5c28700914cddb172cda8b155a705058d27769"},
-    {file = "pywikibot-9.1.3.tar.gz", hash = "sha256:28419926498eddd0c44f8e0db073b619b01d353aca3bf45bc404239cdf111fac"},
+    {file = "pywikibot-9.2.1-py3-none-any.whl", hash = "sha256:a26d918cf88ef56fdb1421b65b09def200cc28031cdc922d72a4198fbfddd225"},
+    {file = "pywikibot-9.2.1.tar.gz", hash = "sha256:3f4fbc57f1765aa0fa1ccf84125bcfa475cae95b9cc0291867b751f3d4ac8fa2"},
 ]
 
 [package.dependencies]
@@ -944,4 +944,4 @@ dev = ["black", "codecov", "flake8", "mypy", "pytest", "pytest-cov", "setuptools
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.11"
-content-hash = "82bd3add88d833c50f2669d9b7d7cd895a9a436c95b08e63b729d49fcb48fb5e"
+content-hash = "f8343c4354e24c45be31a9c8677f4a0cbc7dea84dfc78e1fea1e01dbc0d31219"
