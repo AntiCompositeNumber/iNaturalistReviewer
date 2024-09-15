@@ -12,3 +12,4 @@
   continuous: true
   emails: onfailure
   health-check-script: /data/project/inaturalistreviewer/iNaturalistReviewer/inrbot-healthcheck.sh
+  mem: 1Gi
