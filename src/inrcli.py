@@ -11,7 +11,7 @@ import os
 import sys
 import difflib
 import webbrowser
-from typing import Sequence, Dict, Optional
+from typing import Sequence, Dict, Optional, Tuple
 
 os.environ["LOG_FILE"] = "stderr"
 os.environ["LOG_LEVEL"] = "WARNING"
@@ -24,6 +24,7 @@ site = inrbot.site
 logger = logging.getLogger("manual")
 ids: Dict[pywikibot.Page, Optional[inrbot.iNaturalistID]] = {}
 auto_open = False
+last_ina_id = None
 
 inrbot.config.update(
     {
@@ -108,6 +109,29 @@ class ManualCommonsPage(inrbot.CommonsPage):
                     del self.status
                     self.status
 
+    @staticmethod
+    def prompt_photo_url(
+        default: Optional[str] = None
+    ) -> Tuple[Optional[inrbot.iNaturalistID], str]:
+        global last_ina_id
+        while True:
+            # If default is not None, click will repeatedly prompt until it gets
+            # an answer. That, however, doesn't mean we got an answer we like.
+            url = click.prompt("iNaturalist Photos URL", default=default)
+            ina_id = inrbot.parse_ina_url(url)
+            if ina_id == last_ina_id:
+                if click.confirm(
+                    "That's the same URL you gave last time. Are you sure?"
+                ):
+                    break
+                else:
+                    continue
+            break
+        if ina_id is not None:
+            last_ina_id = ina_id
+            return ina_id, ""
+        return ina_id, url
+
     def pre_save(self, new_text, summary, **kwargs):
         print(
             f"{self.page.title(as_link=True)} reviewed with status {self.status} "
@@ -175,15 +199,13 @@ class ManualCommonsPage(inrbot.CommonsPage):
             sys.exit()
 
         if not correct_id:
-            url = click.prompt("iNaturalist Photos URL")
-            ina_id = inrbot.parse_ina_url(url)
+            ina_id, url = self.prompt_photo_url()
             if observations:
                 self.page.text = self.page.text.replace(str(observations[0]), url)
             if photos:
                 self.page.text = self.page.text.replace(str(photos[0]), url)
         elif observations and not photos:
-            url = click.prompt("iNaturalist Photos URL", default="")
-            ina_id = inrbot.parse_ina_url(url)
+            ina_id, url = self.prompt_photo_url(default="")
         elif photos:
             ina_id = photos[0]
         else:
