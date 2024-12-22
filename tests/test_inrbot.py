@@ -29,10 +29,11 @@ id_tuple = inrbot.iNaturalistID
 def test_check_can_run_skip():
     page = pywikibot.FilePage(inrbot.site, "File:Deletion error 064.png")
     cpage = inrbot.CommonsPage(page)
-    assert isinstance(inrbot.skip, set)
-    inrbot.skip.add("File:Deletion error 064.png")
-    cpage.check_can_run()
-    inrbot.skip.remove("File:Deletion error 064.png")
+    with mock.patch.object(
+        cpage.log_page, "linkedPages", return_value=[page]
+    ) as mock_log_linked:
+        assert not cpage.check_can_run()
+    mock_log_linked.assert_called_once_with(namespaces=6)
 
 
 def test_check_can_run_protected():

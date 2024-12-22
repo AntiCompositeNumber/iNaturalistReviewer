@@ -74,11 +74,7 @@ class ManualCommonsPage(inrbot.CommonsPage):
     def check_can_run(self) -> bool:
         """Determinies if the bot should run on this page and returns a bool."""
         page = self.page
-        if (
-            (page.title() in inrbot.skip)
-            or (not page.has_permission("edit"))
-            or (not page.botMayEdit())
-        ):
+        if (not page.has_permission("edit")) or (not page.botMayEdit()):
             return False
         else:
             return True
@@ -111,7 +107,7 @@ class ManualCommonsPage(inrbot.CommonsPage):
 
     @staticmethod
     def prompt_photo_url(
-        default: Optional[str] = None
+        default: Optional[str] = None,
     ) -> Tuple[Optional[inrbot.iNaturalistID], str]:
         global last_ina_id
         while True:
