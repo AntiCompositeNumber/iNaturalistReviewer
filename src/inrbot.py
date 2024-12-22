@@ -32,13 +32,12 @@ from typing import Any, Iterator
 
 import acnutils
 
-__version__ = "2.5.1"
+__version__ = "2.5.2"
 
 logger = acnutils.getInitLogger("inrbot", level="VERBOSE", filename="inrbot.log")
 
 site = pywikibot.Site("commons", "commons")
 username = site.username()
-skip: Set[str] = set()
 summary_tag = f"(inrbot {__version__})"
 user_agent = (
     f"Bot iNaturalistReviewer/{__version__} "
@@ -435,6 +434,7 @@ class CommonsPage:
         self._obs_id: Optional[iNaturalistID] = None
         self._locked = False
         self.photo_id_source = ""
+        self.log_page = pywikibot.Page(site, config["untagged_log_page"])
 
     @property
     def locked(self) -> bool:
@@ -473,9 +473,12 @@ class CommonsPage:
         """Determinies if the bot should run on this page and returns a bool."""
         page = self.page
         if (
-            (page.title() in skip)
+            # Skip files that are still reported as an error
+            (not self.check_has_template() and self.check_untagged_log())
+            # Skip if the bot can't edit the page, due to permissions or {{bots}}
             or (not page.has_permission("edit"))
             or (not page.botMayEdit())
+            # Skip if there's already a review template with parameters
             or (re.search(r"{{[iI][nN]aturalist[rR]eview *?\|.*?}}", page.text))
         ):
             return False
@@ -1058,8 +1061,7 @@ class CommonsPage:
     def log_untagged_error(self) -> None:
         if simulate:
             return
-        log_page = pywikibot.Page(site, config["untagged_log_page"])
-        if self.page.title() not in log_page.text:
+        if self.page.title() not in self.log_page.text:
             message = string.Template(config["untagged_log_line"]).safe_substitute(
                 status=self.status,
                 reason=self.reason,
@@ -1077,7 +1079,7 @@ class CommonsPage:
                 acnutils.save_page,
                 3,
                 text=message,
-                page=log_page,
+                page=self.log_page,
                 summary=summary,
                 bot=False,
                 minor=False,
@@ -1088,11 +1090,10 @@ class CommonsPage:
         """
         Removes a file from the untagged error log
         """
-        log_page = pywikibot.Page(site, config["untagged_log_page"])
         new_text, changes = re.subn(
             r"^.*?{0}.*\n?".format(re.escape(str(self.page.title()))),
             "",
-            log_page.text,
+            self.log_page.text,
             flags=re.MULTILINE,
         )
         summary = string.Template(
@@ -1113,11 +1114,20 @@ class CommonsPage:
                 acnutils.save_page,
                 3,
                 text=new_text,
-                page=log_page,
+                page=self.log_page,
                 summary=summary,
                 bot=False,
                 minor=False,
             )
+
+    def check_untagged_log(self) -> bool:
+        """
+        Returns True if the file is on the untagged log
+        """
+        for page in self.log_page.linkedPages(namespaces=6):
+            if page == self.page:
+                return True
+        return False
 
     def review_file(
         self, throttle: Optional[acnutils.Throttle] = None
@@ -1178,7 +1188,6 @@ class CommonsPage:
         if self.status == "error" and not self.check_has_template():
             # Not previously tagged, don't need to throw an error message on it.
             logger.info("Skipping...")
-            skip.add(self.page.title())
             self.log_untagged_error()
             # TODO: report out failures/maintain skip list
 
