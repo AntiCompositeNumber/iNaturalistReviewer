@@ -26,6 +26,21 @@ test_data_dir = os.path.join(_work_dir_, "testdata")
 id_tuple = inrbot.iNaturalistID
 
 
+def test_exponential_ratelimit():
+    backoff = inrbot.ExponentialRateLimit(interval_seconds=3, base=2, max_fails=4)
+    backoff.failure()
+    assert backoff.fails == 1
+    backoff.success()
+    assert backoff.fails == 0
+    assert backoff.should_run() is True
+
+    for i in range(4):
+        backoff.failure()
+
+    assert backoff.backoff_seconds() == 48
+    assert backoff.should_run() is False
+
+
 def test_check_can_run_skip():
     page = pywikibot.FilePage(inrbot.site, "File:Deletion error 064.png")
     cpage = inrbot.CommonsPage(page)

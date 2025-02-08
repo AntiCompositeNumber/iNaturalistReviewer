@@ -32,7 +32,7 @@ from typing import Any, Iterator
 
 import acnutils
 
-__version__ = "2.6.0"
+__version__ = "2.6.1"
 
 logger = acnutils.getInitLogger("inrbot", level="VERBOSE", filename="inrbot.log")
 
@@ -115,7 +115,7 @@ class ExponentialRateLimit:
         self.fails = 0
         self.max_fails = max_fails
         self.last_request = 0.0
-        self.log_name = log_name
+        self.logger = logger.getChild(log_name or "ExponentialRateLimit")
 
     def success(self) -> None:
         if self.fails >= 0:
@@ -125,8 +125,10 @@ class ExponentialRateLimit:
     def failure(self) -> None:
         if self.max_fails == 0 or self.fails < self.max_fails:
             self.fails = self.fails + 1
-        elif self.log_name:
-            logger.error(f"{self.log_name}: Maximum failures exceeded")
+        else:
+            self.logger.error(
+                f"Maximum failures exceeded ({self.fails=} >= {self.max_fails=})"
+            )
 
         self.last_request = time.monotonic()
 
@@ -137,11 +139,13 @@ class ExponentialRateLimit:
         if self.fails == 0:
             return True
 
-        return self.last_request + self.backoff_seconds() <= time.monotonic()
+        backoff = self.backoff_seconds()
+        self.logger.debug(f"{self.fails=}, {backoff=}")
+        return self.last_request + backoff <= time.monotonic()
 
 
 petscan_backoff = ExponentialRateLimit(
-    interval_seconds=60, base=6, max_fails=4, log_name="PetScan backoff"
+    interval_seconds=60, base=6, max_fails=4, log_name="petscan_backoff"
 )
 
 
@@ -195,7 +199,7 @@ def untagged_files_to_check() -> Iterator[pywikibot.page.BasePage]:
             pages = data["*"][0]["a"]["*"]
             petscan_backoff.success()
         except Exception as err:
-            logger.warning(err)
+            logger.warning(f"Failed to get data from {res.url}", exc_info=err)
             pages = []
             petscan_backoff.failure()
         logger.info(f"Found {len(pages)} untagged files to check")
