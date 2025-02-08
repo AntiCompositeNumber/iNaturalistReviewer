@@ -32,7 +32,7 @@ from typing import Any, Iterator
 
 import acnutils
 
-__version__ = "2.5.2"
+__version__ = "2.6.0"
 
 logger = acnutils.getInitLogger("inrbot", level="VERBOSE", filename="inrbot.log")
 
@@ -92,6 +92,59 @@ class StopReview(Exception):
         self.reason = reason
 
 
+class ExponentialRateLimit:
+    """Provide an exponential backoff based on calls to failure()
+
+    Unlike acnutils.Throttle, this throttle is not self-enforcing.
+    Instead, call should_run() to determine if a request to a flaky service
+    should be made.
+    """
+
+    def __init__(
+        self, interval_seconds: int, base: int, max_fails: int = 0, log_name: str = ""
+    ) -> None:
+        """
+        :param interval_seconds: Delay interval, in seconds.
+        :param base: Base of exponential delay
+        :param max_fails: Number of failures beyond which delay should not increase.
+            Set to 0 for no maximum.
+        """
+        self.max_fails = max_fails
+        self.interval = interval_seconds
+        self.base = base
+        self.fails = 0
+        self.max_fails = max_fails
+        self.last_request = 0.0
+        self.log_name = log_name
+
+    def success(self) -> None:
+        if self.fails >= 0:
+            self.fails = self.fails - 1
+        self.last_request = time.monotonic()
+
+    def failure(self) -> None:
+        if self.max_fails == 0 or self.fails < self.max_fails:
+            self.fails = self.fails + 1
+        elif self.log_name:
+            logger.error(f"{self.log_name}: Maximum failures exceeded")
+
+        self.last_request = time.monotonic()
+
+    def backoff_seconds(self) -> int:
+        return self.interval * (self.base**self.fails)
+
+    def should_run(self) -> bool:
+        if self.fails == 0:
+            return True
+
+        return self.last_request + self.backoff_seconds() <= time.monotonic()
+
+
+petscan_backoff = ExponentialRateLimit(
+    interval_seconds=60, base=6, max_fails=4, log_name="PetScan backoff"
+)
+
+
 def get_config() -> Tuple[dict, datetime.datetime]:
     """Load on-wiki configuration"""
     page = pywikibot.Page(site, "User:iNaturalistReviewBot/config.json")
@@ -128,7 +181,7 @@ def files_to_check(start: Optional[str] = None) -> Iterator[pywikibot.page.BaseP
 
 
 def untagged_files_to_check() -> Iterator[pywikibot.page.BasePage]:
-    if not config.get("find_untagged"):
+    if not (config.get("find_untagged") and petscan_backoff.should_run()):
         pages = []
     else:
         try:
@@ -140,11 +193,14 @@ def untagged_files_to_check() -> Iterator[pywikibot.page.BasePage]:
             data = res.json()
             assert data["n"] == "result"
             pages = data["*"][0]["a"]["*"]
+            petscan_backoff.success()
         except Exception as err:
-            logger.exception(err)
+            logger.warning(err)
             pages = []
+            petscan_backoff.failure()
         logger.info(f"Found {len(pages)} untagged files to check")
 
+    # Whether we get data from PetScan is unrelated to the health of inrbot
     do_heartbeat()
     for page_data in pages:
         yield pywikibot.FilePage(site, title=page_data["title"])
