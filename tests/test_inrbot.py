@@ -1131,7 +1131,7 @@ def test_review_file_stop(runpage):
     ):
         cpage.review_file()
     assert cpage.status == "stop"
-    mock_review.assert_called_once()
+    mock_review.assert_not_called()
     runpage.assert_called()
 
 
