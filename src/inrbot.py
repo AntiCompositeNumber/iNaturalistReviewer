@@ -32,7 +32,7 @@ from typing import Any, Iterator
 
 import acnutils
 
-__version__ = "2.6.1"
+__version__ = "2.7.0"
 
 logger = acnutils.getInitLogger("inrbot", level="VERBOSE", filename="inrbot.log")
 
@@ -1238,6 +1238,7 @@ class CommonsPage:
         except StopReview as err:
             logger.info(f"Image already reviewed, contains {err.reason}")
             self.status = "stop"
+            return False
         except (acnutils.RunpageError, KeyboardInterrupt, ConnectionError) as err:
             raise err
         except Exception as err:
