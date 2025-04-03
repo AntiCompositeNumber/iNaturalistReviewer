@@ -370,7 +370,6 @@ def get_ina_image(photo: iNaturalistID, final: bool = False) -> bytes:
 def bytes_throttle(length: int) -> None:
     hour_limit = 4.5e9
     day_limit = 23.5e9
-    global recent_bytes
     logger.debug(f"Content length: {length}")
     now = datetime.datetime.now()
     recent_bytes[datetime.datetime.now()] = length
