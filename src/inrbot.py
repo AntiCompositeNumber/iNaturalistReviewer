@@ -934,7 +934,7 @@ class CommonsPage:
         else:
             # Check for normal {{LicenseReview}} template
             for review_template in code.ifilter_templates(
-                matches=lambda t: re.search(r"[Ll]icense ?[Rr]eview", str(t))
+                matches=lambda t: bool(re.search(r"[Ll]icense ?[Rr]eview", str(t)))
             ):
                 code.replace(review_template, template)
                 changed = True
@@ -948,8 +948,8 @@ class CommonsPage:
                         changed = True
                 else:
                     for node in code.ifilter(
-                        matches=lambda n: re.search(
-                            r"(\[\[Category:|\{\{Uncategorized)", str(n)
+                        matches=lambda n: bool(
+                            re.search(r"(\[\[Category:|\{\{Uncategorized)", str(n))
                         )
                     ):
                         code.insert_before(node, template + "\n\n")
