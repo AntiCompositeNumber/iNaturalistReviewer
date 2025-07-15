@@ -602,7 +602,7 @@ class CommonsPage:
         return self._photo_id
 
     @photo_id.setter
-    def photo_id(self, value: iNaturalistID):
+    def photo_id(self, value: Optional[iNaturalistID]):
         self._set_locking("_photo_id", value)
 
     @property
@@ -610,7 +610,7 @@ class CommonsPage:
         return self._raw_photo_id
 
     @raw_photo_id.setter
-    def raw_photo_id(self, value: iNaturalistID):
+    def raw_photo_id(self, value: Optional[iNaturalistID]):
         self._raw_photo_id = value
 
     @property
@@ -621,7 +621,7 @@ class CommonsPage:
         return self._obs_id
 
     @obs_id.setter
-    def obs_id(self, value: iNaturalistID) -> None:
+    def obs_id(self, value: Optional[iNaturalistID]) -> None:
         self._set_locking("_obs_id", value)
 
     @obs_id.deleter
