@@ -32,7 +32,7 @@ from typing import Any, Iterator
 
 import acnutils
 
-__version__ = "2.7.0"
+__version__ = "2.7.1"
 
 logger = acnutils.getInitLogger("inrbot", level="VERBOSE", filename="inrbot.log")
 
@@ -447,9 +447,10 @@ class Aliases:
         return self._aliases
 
     def is_license(self, template: mwph.nodes.Template) -> bool:
-        if template.name.lower() in self.aliases:
+        name = template.name.lower().strip()
+        if name in self.aliases:
             return True
-        elif template.name.lower() == "self":
+        elif name == "self":
             return True
         return False
 
@@ -899,7 +900,7 @@ class CommonsPage:
             assert url.archive_url is not None
             self.archive = url.archive_url
         except Exception as err:
-            logger.warn("Failed to get archive", exc_info=err)
+            logger.warning("Failed to get archive", exc_info=err)
             self.archive = ""
 
     def get_old_archive(self) -> None:
@@ -960,7 +961,7 @@ class CommonsPage:
                         changed = True
 
         if not changed:
-            logger.info("Page not changed")
+            logger.warn("Page not changed")
             return False
 
         if self.status == "pass-change":
