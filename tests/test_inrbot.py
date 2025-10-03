@@ -627,6 +627,23 @@ def test_no_del(status, templates, expected):
             ),
         ),
         (
+            test_data_dir + "/section_untagged_space.txt",
+            dict(
+                status="pass",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="Cc-by-sa-4.0",
+                reason="sha1",
+            ),
+            (
+                "{{cc-by-sa-4.0 |1=Author}}\n{{iNaturalistreview |status=pass "
+                "|author=Author |sourceurl=https://www.inaturalist.org/photos/11505950 "
+                "|archive=archive(https://www.inaturalist.org/photos/11505950) "
+                f"|reviewdate={date.today().isoformat()} |reviewer=iNaturalistReviewBot"
+                " |reviewlicense=Cc-by-sa-4.0 |reason=sha1}}"
+            ),
+        ),
+        (
             test_data_dir + "/section_change.txt",
             dict(
                 status="pass-change",
