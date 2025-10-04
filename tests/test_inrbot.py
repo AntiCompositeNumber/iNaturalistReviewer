@@ -892,6 +892,24 @@ def test_no_del(status, templates, expected):
                 "|reviewlicense=Cc-by-sa-4.0 |uploadlicense=Cc-by-4.0 |reason=sha1}}"
             ),
         ),
+        (
+            test_data_dir + "/broken.txt",
+            dict(
+                status="pass-change",
+                ina_author="Author",
+                ina_license="Cc-by-sa-4.0",
+                com_license="Cc-by-4.0",
+                reason="sha1",
+            ),
+            (
+                "Foo\n\n{{iNaturalistreview |status=pass-change "
+                "|author=Author |sourceurl=https://www.inaturalist.org/photos/11505950 "
+                "|archive=archive(https://www.inaturalist.org/photos/11505950) "
+                f"|reviewdate={date.today().isoformat()} "
+                "|reviewer=iNaturalistReviewBot "
+                "|reviewlicense=Cc-by-sa-4.0 |uploadlicense=Cc-by-4.0 |reason=sha1}}"
+            ),
+        ),
     ],
 )
 def test_update_review(filename, kwargs, compare):
@@ -924,23 +942,6 @@ def test_update_review(filename, kwargs, compare):
             assert inrbot.config["old_fail_tag"][:11] in new_text
         else:
             assert inrbot.config["fail_tag"][:9] in new_text
-
-
-def test_update_review_broken():
-    page = mock.Mock()
-    page.text = "Foo"
-    cpage = inrbot.CommonsPage(page)
-    kwargs = dict(
-        photo_id=id_tuple(type="photos", id="11505950"),
-        status="pass",
-        ina_author="Author",
-        ina_license="Cc-by-sa-4.0",
-        com_license="Cc-by-sa-4.0",
-        reason="sha1",
-    )
-    for key, value in kwargs.items():
-        setattr(cpage, key, value)
-    assert cpage.update_review() is False
 
 
 @pytest.mark.parametrize(
