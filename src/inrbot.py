@@ -947,6 +947,10 @@ class CommonsPage:
                     for pt2 in code.ifilter_templates(matches=aliases.is_license):
                         code.insert_after(pt2, "\n" + template)
                         changed = True
+                        break
+                    else:
+                        code.append("\n" + template)
+                        changed = True
                 else:
                     for node in code.ifilter(
                         matches=lambda n: bool(
@@ -957,7 +961,7 @@ class CommonsPage:
                         changed = True
                         break
                     else:
-                        code.append("\n\n" + template)
+                        code.append("\n" + template)
                         changed = True
 
         if not changed:
