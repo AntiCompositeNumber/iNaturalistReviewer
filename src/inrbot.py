@@ -32,7 +32,7 @@ from typing import Any, Iterator
 
 import acnutils
 
-__version__ = "2.7.1"
+__version__ = "2.7.2"
 
 logger = acnutils.getInitLogger("inrbot", level="VERBOSE", filename="inrbot.log")
 
@@ -426,10 +426,16 @@ class Aliases:
             for page in canon_page.backlinks(filter_redirects=True, namespaces=10)
         }
         aliases.add(canon_page.title(with_ns=False).lower())
-        aliases.update(
-            page.title(with_ns=False).lower().partition("/")[0]
-            for page in canon_page.embeddedin(namespaces=10)
-        )
+        for page in canon_page.embeddedin(namespaces=10):
+            title = page.title(with_ns=False).lower()
+            base_title = title.partition("/")[0]
+            # Skip Template:Information/sandbox/testcases' and similar
+            if (
+                "testcases" in title
+                or "sandbox" in title
+                or base_title == "information"
+            ):
+                aliases.add(base_title)
         self._aliases = aliases
 
     @property
