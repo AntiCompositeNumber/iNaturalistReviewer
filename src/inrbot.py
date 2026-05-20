@@ -50,7 +50,7 @@ user_agent = (
 
 session = requests.Session()
 session.headers.update({"user-agent": user_agent})
-recent_bytes = {}
+recent_bytes: dict[datetime.datetime, int] = {}
 conf_ts = None
 
 compare_methods: List[Tuple[str, Callable]] = []
