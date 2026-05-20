@@ -1122,6 +1122,7 @@ class CommonsPage:
                 bot=False,
                 minor=False,
                 mode="append",
+                new_ok=True,
             )
         else:
             logger.info("Saving disabled")
