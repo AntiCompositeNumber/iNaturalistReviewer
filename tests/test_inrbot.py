@@ -371,6 +371,7 @@ def test_find_photo_in_obs_photo():
 
 
 @pytest.mark.ext_web
+@pytest.mark.skip(reason="Requests to /photos/ pages 403 from GH Actions")
 def test_find_photo_in_obs_changeobs():
     cpage = inrbot.CommonsPage(None)
     cpage.obs_id = id_tuple(id="15059501", type="observations")
@@ -1098,6 +1099,7 @@ def test_fail_warning(runpage, is_old):
 
 
 @pytest.mark.ext_web
+@pytest.mark.skip(reason="Requests to /photos/ pages 403 from GH Actions")
 def test_get_observation_from_photo():
     photo_id = id_tuple(type="photos", id="58596679")
     obs_id = id_tuple(type="observations", id="36885889")
